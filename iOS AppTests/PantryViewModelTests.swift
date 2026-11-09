@@ -69,12 +69,23 @@ struct PantryViewModelTests {
         #expect(viewModel.newItemName == "")
     }
 
-    @Test func deleteRemovesItem() {
-        for name in ["egg", "rice"] {
-            viewModel.newItemName = name
-            viewModel.add()
+    @Test func sectionsGroupByCategoryInFixedOrder() {
+        for name in ["rice", "egg", "spinach", "bacon", "dragon fruit"] {
+            viewModel.add(suggestion: name)
         }
-        viewModel.delete(at: [0])
-        #expect(viewModel.items.map(\.name) == ["rice"])
+        #expect(viewModel.sections.map(\.category) == [.produce, .protein, .grains, .other])
+        #expect(viewModel.sections[1].items.map(\.name) == ["bacon", "egg"])
+    }
+
+    @Test func noSectionsWhenEmpty() {
+        #expect(viewModel.sections.isEmpty)
+    }
+
+    @Test func deleteRemovesItemFromItsSection() {
+        for name in ["egg", "bacon", "rice"] {
+            viewModel.add(suggestion: name)
+        }
+        viewModel.delete(at: [1], in: .protein)
+        #expect(viewModel.items.map(\.name) == ["bacon", "rice"])
     }
 }
