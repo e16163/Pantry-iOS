@@ -13,7 +13,6 @@ struct PantryView: View {
                         TextField("Add an ingredient", text: $viewModel.newItemName)
                             .focused($isFieldFocused)
                             .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
                             .submitLabel(.done)
                             .onSubmit {
                                 viewModel.add()
