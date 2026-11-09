@@ -69,7 +69,7 @@ iOS App/
 | 6 | Stretch goals (expiration, expiring-first, dietary, timers) cut; reopen if ahead | ✅ |
 | 7 | **MVVM**, built up in layers starting from a skeleton | ✅ |
 | 8 | Photo detection: Foundation Models image input on iOS 27+ (found in SDK, #51) vs YOLO/Vision; decide in #53; cutoff Nov 18 | 🟡 Needs a test on the demo iPhone |
-| 9 | Is ambervermaa on the team? | 🟡 Open |
+| 9 | ambervermaa is our bootcamp supervisor, not a team member: no cards assigned, not a project collaborator (the board is public, so she can view it) | ✅ |
 
 **Spike results (#54):** recipe generation takes about 8 s for 3 recipes and sometimes invents ingredients (1 of 6 used chicken that wasn't in the pantry), so pantry-only validation (#64) is in L2.
 
