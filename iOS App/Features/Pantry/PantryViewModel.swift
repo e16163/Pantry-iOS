@@ -20,7 +20,7 @@ final class PantryViewModel {
     }
 
     func add() {
-        let name = newItemName.trimmingCharacters(in: .whitespaces).lowercased()
+        let name = IngredientName.normalize(newItemName)
         guard !name.isEmpty else { return }
         let category = IngredientCatalog.all.first { $0.name == name }?.category ?? .other
         context.insert(PantryItem(name: name, category: category))
