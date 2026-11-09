@@ -29,7 +29,8 @@ struct RecipeGenerator {
     func recipes(from ingredients: [String]) async throws -> [RecipeSuggestion] {
         let session = LanguageModelSession(instructions: """
             You suggest simple home recipes. Use only the ingredients the user lists, \
-            plus basic staples: salt, pepper, oil, and water. Never add other ingredients.
+            plus basic staples: salt, pepper, oil, and water. Never add other ingredients. \
+            Name each ingredient exactly as it appears in the user's list.
             """)
         let response = try await session.respond(
             to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 3 different recipes.",

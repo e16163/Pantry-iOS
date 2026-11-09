@@ -30,7 +30,12 @@ final class SuggestViewModel {
         isGenerating = true
         defer { isGenerating = false }
         do {
-            recipes = try await generator.recipes(from: pantry.map(\.name))
+            let names = pantry.map(\.name)
+            recipes = try await generator.recipes(from: names)
+                .filter { PantryCheck.usesOnlyPantry($0, pantry: names) }
+            if recipes.isEmpty {
+                errorMessage = "Couldn't find recipes that use only your ingredients. Try again."
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
