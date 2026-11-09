@@ -34,6 +34,41 @@ struct PantryViewModelTests {
         #expect(viewModel.items.first?.category == .other)
     }
 
+    @Test func addSkipsDuplicatesAfterNormalizing() {
+        for name in ["egg", "Eggs", " EGG "] {
+            viewModel.newItemName = name
+            viewModel.add()
+        }
+        #expect(viewModel.items.map(\.name) == ["egg"])
+        #expect(viewModel.newItemName == "")
+    }
+
+    @Test func suggestionsPutPrefixMatchesFirst() {
+        viewModel.newItemName = "on"
+        #expect(viewModel.suggestions.first == "onion")
+        #expect(viewModel.suggestions.contains("green onion"))
+    }
+
+    @Test func suggestionsExcludePantryItemsAndCapAtFive() {
+        viewModel.add(suggestion: "onion")
+        viewModel.newItemName = "on"
+        #expect(!viewModel.suggestions.contains("onion"))
+        viewModel.newItemName = "a"
+        #expect(viewModel.suggestions.count == 5)
+    }
+
+    @Test func noSuggestionsForBlankText() {
+        viewModel.newItemName = "  "
+        #expect(viewModel.suggestions.isEmpty)
+    }
+
+    @Test func addSuggestionAddsIt() {
+        viewModel.newItemName = "garl"
+        viewModel.add(suggestion: "garlic")
+        #expect(viewModel.items.map(\.name) == ["garlic"])
+        #expect(viewModel.newItemName == "")
+    }
+
     @Test func deleteRemovesItem() {
         for name in ["egg", "rice"] {
             viewModel.newItemName = name
