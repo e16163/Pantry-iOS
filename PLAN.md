@@ -2,11 +2,60 @@
 
 An iOS app that recommends recipes from ingredients you already have. Type ingredients in or snap a photo of your fridge, and get meals you can make without buying anything.
 
-**Stack:** Swift, SwiftUI, PhotosUI, Foundation Models, SwiftData, Vision + Core ML. No auth, no paid APIs.
+**Stack:** Swift, SwiftUI, SwiftData, Foundation Models, PhotosUI, Vision. **Architecture: MVVM.** No auth, no paid APIs.
 
 **Board:** https://github.com/users/e16163/projects/3. It's the source of truth for tasks; this file holds the plan and decisions.
 
-_Last updated Nov 9. Week 1 went into planning, so the build is compressed into Nov 10–23._
+_Last updated Nov 9: restructured into MVVM build-up layers._
+
+## How we build: layers
+
+We build the app **up in layers**. First the simplest version of the whole flow (the skeleton), then each layer makes it better. **After every layer, and every merged PR, the app works and can be demoed.** If time runs out, we cut the top layers, not half-built features.
+
+| Layer | Dates | Goal | Cards |
+|---|---|---|---|
+| **L0 Foundation** | Nov 3–9 | Project setup, data models, ingredients list | #46–49, #55, #56, #57 |
+| **L1 Skeleton** | Nov 9–10 | Bare-bones end-to-end flow: type ingredients → generate → open → save → Saved tab | #95, #54 |
+| **L2 Core features** | Nov 10–14 | Make each screen real: autocomplete, category grouping, time filter, pantry-only validation, design, recipe cards | #58–61, #64, #67–71 |
+| **L3 Reliability** | Nov 14–16 | Works everywhere and never feels broken: fallback recipes, error handling, streaming, empty states, unit tests | #62, #63, #65, #66, #75, #77 |
+| **L4 Photo input** | Nov 16–18 | Fridge photo → detected ingredients → review sheet. **Hard cutoff Nov 18** | #51–53, #72–74 |
+| **L5 Cook mode & polish** | Nov 18–20 | Step-by-step cook mode, accessibility, icon, visual polish | #76, #78–80 |
+| **L6 Ship** | Nov 21–23 | Bug bash, freeze (Nov 21), demo build, rehearsal | #85–88, #50 |
+
+**Rules for layers**
+- Only the **current layer** is in **Todo**. The next one moves from Backlog when the current one is nearly done.
+- Within a layer, take cards whose "Depends on" are Done, P0 first.
+- A card **adds to what exists**. It never rebuilds a screen from scratch.
+
+## Architecture: MVVM
+
+```
+iOS App/
+├── MyApp.swift                 Creates the ModelContainer
+├── RootView.swift              Creates one ViewModel per tab; TabView
+├── Models/                     MODEL: SwiftData @Model types, IngredientCatalog
+├── Services/                   MODEL: RecipeGenerator (AI), later FallbackRecipes, IngredientDetector
+├── Resources/                  ingredients.json, later fallback_recipes.json
+└── Features/
+    ├── Pantry/                 PantryView + PantryViewModel
+    ├── Suggest/                SuggestView + SuggestViewModel
+    ├── RecipeDetail/           RecipeDetailView + RecipeDetailViewModel
+    ├── Saved/                  SavedView + SavedViewModel
+    └── Cook/                   (L5) CookView + CookViewModel
+```
+
+| Layer | What goes there | Rules |
+|---|---|---|
+| **Model** | `@Model` types (`PantryItem`, `SavedRecipe`) and services (`RecipeGenerator`) | No SwiftUI. Services don't know about screens. |
+| **ViewModel** | One `@Observable @MainActor final class` per screen | Owns the screen's state and actions. Talks to `ModelContext` and services. **No SwiftUI views.** |
+| **View** | SwiftUI | Displays view-model state and calls view-model methods. **Never touches `ModelContext` or services directly.** |
+
+**Conventions**
+- View models receive the `ModelContext` in `init` and fetch with `FetchDescriptor`. We don't use `@Query`, because it puts data access in views.
+- A view model that opens another screen creates that screen's view model (`detailViewModel(for:)`), so views never need the context.
+- Mutating methods reload their list (`load()`) after inserting or deleting.
+- **New feature = view model first, then view.** Logic in a view model can be unit-tested without the UI (#75).
+- Every code card on the board has a **"Where it goes (MVVM)"** section naming the files it touches.
 
 ## Decisions
 
@@ -14,98 +63,38 @@ _Last updated Nov 9. Week 1 went into planning, so the build is compressed into 
 |---|---|---|
 | 1 | Demo is ~Nov 23; feature freeze Fri Nov 21 | ✅ |
 | 2 | Demo device: e16163's Apple Intelligence iPhone | ✅ |
-| 3 | No fixed roles: pull-based Kanban (see [How we work](#how-we-work)) | ✅ |
-| 4 | Minimum iOS 26.0 (Foundation Models' first release) | ✅ Done |
-| 5 | Recipes come from Foundation Models; bundled `fallback_recipes.json` when the model is unavailable | ✅ |
-| 6 | Keep full scope except stretch goals (expiration dates, expiring-first, dietary prefs, cook timers): closed, reopen if ahead | ✅ |
-| 7 | Photo detection: pre-trained **YOLOv8 (Open Images V7) Core ML model** + **Vision text recognition** for packaging labels. Final call in #53 after spikes; hard cutoff **Nov 18** | 🟡 Pending spikes |
-| 8 | Is ambervermaa on the team? (repo invite pending, not on the project) | 🟡 Open |
+| 3 | No fixed roles: pull-based Kanban | ✅ |
+| 4 | Minimum iOS 26.0 | ✅ Done |
+| 5 | Recipes from Foundation Models; bundled fallback recipes when the model is unavailable | ✅ |
+| 6 | Stretch goals (expiration, expiring-first, dietary, timers) cut; reopen if ahead | ✅ |
+| 7 | **MVVM**, built up in layers starting from a skeleton | ✅ |
+| 8 | Photo detection: Foundation Models image input on iOS 27+ (found in SDK, #51) vs YOLO/Vision; decide in #53; cutoff Nov 18 | 🟡 Needs a test on the demo iPhone |
+| 9 | Is ambervermaa on the team? | 🟡 Open |
 
-Mentor feedback (Nov 9): prioritize manual entry and recipe recommendations; fridge scanning is a bonus. The plan follows this: manual entry is the guaranteed path, and photo detection always goes through a review sheet.
+**Spike results (#54):** recipe generation takes about 8 s for 3 recipes and sometimes invents ingredients (1 of 6 used chicken that wasn't in the pantry), so pantry-only validation (#64) is in L2.
 
-## Timeline
-
-| Date | Checkpoint |
-|---|---|
-| **Tue Nov 11** | App runs on a phone with 3 tabs; AI test returns recipes |
-| **Sat Nov 15** | ⭐ **Core loop works on device:** type ingredients → generate → open → save. This alone is a passable demo. |
-| **Tue Nov 18** | **Photo cutoff:** if detection isn't reliable, demo with manual entry only |
-| **Fri Nov 21** | **Feature freeze:** bug fixes only |
-| **~Nov 23** | Demo |
-
-### Week 2 (Nov 10–16): Foundation + core loop
-- [ ] Setup: deployment target ✅, `.gitignore`, folder structure, tab shell
-- [ ] Spikes: Foundation Models recipe generation; YOLO vs Vision detection → decision
-- [ ] SwiftData models; pantry list + manual entry with autocomplete
-- [ ] `RecipeGenerator`, pantry-only validation, normalization, fallback recipes, availability check
-- [ ] Suggest screen, recipe cards, detail view, Saved tab
-- [ ] Camera / PhotosPicker capture
-- → verify: on device, type ingredients → recipes → save works end to end
-
-### Week 3 (Nov 17–23): Photo, polish, demo
-- [ ] IngredientDetector + review sheet (cutoff Nov 18)
-- [ ] Streaming results, cook mode
-- [ ] Empty/loading/error states, accessibility, app icon, visual polish
-- [ ] Unit tests, bug bash, freeze, demo build, rehearsal, backup video
+Mentor feedback (Nov 9): prioritize manual entry and recipe recommendations; fridge scanning is a bonus. The layers follow this: photo input is L4, after the core works.
 
 ## How we work
 
-1. **Pull, don't wait.** Take the highest-priority card in **Todo** (P0 → P1 → P2) whose "Depends on" cards are Done.
-2. **Assign yourself** and move it to **In Progress**. The **My Cards** view shows yours.
-3. **Max 2 cards In Progress per person.**
-4. **Unblockers first.** Critical path:
-   `#46/#47/#48 setup → #56 models → #54 AI spike → #62 RecipeGenerator → #68 Suggest`
-   `#58 pantry list → #59 manual entry` · `#69 card → #70 detail → #71 Saved`
-5. **Avoid collisions:** check In Progress; comment on the card if you'll touch the same screen as someone else.
-6. **Feature PRs:** small (<300 lines), `Closes #N` in the body, one teammate reviews within 24 h, card → **In Review**.
-7. **Merge to `main` at least daily.**
-8. **Daily check-in** in the team channel: done / next / blocked.
-
-## Architecture
-
-```
-iOS App/
-├── Models/            SwiftData: PantryItem, SavedRecipe
-├── AI/                RecipeGenerator (LanguageModelSession + @Generable types)
-│                      IngredientDetector (YOLO Core ML + Vision text recognition)
-├── Features/
-│   ├── Pantry/        list, manual add, photo → review
-│   ├── Suggest/       filters, recipe cards, detail
-│   ├── Cook/          step-by-step mode
-│   └── Saved/
-└── Resources/         fallback_recipes.json (~30 recipes), ingredients.json
-```
-
-**Data**
-- `PantryItem`: name, category, addedAt
-- `SavedRecipe`: title, minutes, difficulty, ingredients [String], steps [String], savedAt
-- `@Generable struct RecipeSuggestion`: title, summary, minutes, difficulty, ingredientsUsed, steps
-
-**Prompting rule:** "Use only these ingredients, plus pantry staples (salt, pepper, oil, water)." After generation, check in code that each recipe's `ingredientsUsed` is a subset of the pantry, and drop or flag recipes that aren't.
-
-**Fallback:** If `SystemLanguageModel.default.availability` isn't available, match the pantry against `fallback_recipes.json` by ingredient overlap.
-
-**Photo detection:** run a pre-trained YOLOv8 model (Open Images V7, about 600 classes including many foods), exported to Core ML (`yolo export model=yolov8n-oiv7.pt format=coreml nms=True`), through Vision. Add `RecognizeTextRequest` to read packaging labels ("MILK", "salsa"). Map labels to ingredient names, normalize them, and always show the review sheet.
-
-**Screens:** 3 tabs.
-- **Pantry:** list, + manual add, camera/photo button → review sheet
-- **Suggest:** time filter (≤15 / 30 / 60 min) → Generate → streaming recipe cards → detail → Save / Start Cooking
-- **Saved:** saved recipes → detail
-
-**Cook mode:** one step per page, large text, the screen stays awake (`isIdleTimerDisabled`).
+1. Take the highest-priority **Todo** card whose "Depends on" cards are Done.
+2. **Assign yourself**, move it to **In Progress**. The **My Cards** view shows yours. Max 2 in progress per person.
+3. Branch `feature/<issue#>-short-name`, build it (view model first), open a PR with `Closes #N`, move the card to **In Review**.
+4. One teammate reviews within 24 h. Merge to `main` at least daily.
+5. Daily check-in in the team channel: done / next / blocked.
 
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| Photo detection is poor | Review sheet; manual entry is the primary path; Nov 18 cutoff |
-| Model invents ingredients | Pantry-only validation |
-| Model unavailable on a device | Fallback recipes + availability check |
-| Slow generation | Streaming; 3 recipes per request |
-| Lost Week 1 | Core loop checkpoint Sat Nov 15; stretch goals cut |
+| Model invents ingredients | Pantry-only validation (#64, L2) |
+| Model unavailable on a device | Fallback recipes + availability check (L3) |
+| Slow generation (~8 s) | Streaming (#63, L3) |
+| Photo detection is poor | Review sheet; manual entry is primary; cutoff Nov 18 |
+| Running out of time | Layers: every layer ships a working app, so we cut from the top |
 
 ## Demo script (2 min)
-1. Take a photo of the fridge and fix one wrong item on the review screen (or type ingredients if photo was cut).
+1. Add ingredients (photo with one fix on the review sheet, or typed if photo was cut).
 2. Set the filter to ≤30 min and generate.
-3. Open a recipe, save it, then start cook mode.
+3. Open a recipe, save it, start cook mode.
 4. Show the Saved tab.
