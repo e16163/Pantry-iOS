@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Xcode per-user state (causes merge conflicts between teammates)
+xcuserdata/
+*.xcuserstate
+
+# Build output
+build/
+DerivedData/
+
+# Swift Package Manager
+.build/
+.swiftpm/
