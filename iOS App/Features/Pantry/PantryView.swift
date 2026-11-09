@@ -27,15 +27,37 @@ struct PantryView: View {
                             Label(name, systemImage: "plus.circle")
                         }
                     }
-                }
-                Section("\(viewModel.items.count) ingredients") {
-                    ForEach(viewModel.items) { item in
-                        Text(item.name)
+                } footer: {
+                    if !viewModel.items.isEmpty {
+                        Text("^[\(viewModel.items.count) ingredient](inflect: true)")
                     }
-                    .onDelete(perform: viewModel.delete)
+                }
+                if viewModel.items.isEmpty {
+                    ContentUnavailableView(
+                        "Your pantry is empty",
+                        systemImage: "refrigerator",
+                        description: Text("Add what you have, and we'll suggest recipes you can make.")
+                    )
+                }
+                ForEach(viewModel.sections, id: \.category) { section in
+                    Section {
+                        ForEach(section.items) { item in
+                            Text(item.name)
+                        }
+                        .onDelete { offsets in
+                            viewModel.delete(at: offsets, in: section.category)
+                        }
+                    } header: {
+                        Label(section.category.title, systemImage: section.category.systemImage)
+                    }
                 }
             }
             .navigationTitle("Pantry")
+            .toolbar {
+                if isFieldFocused {
+                    Button("Done") { isFieldFocused = false }
+                }
+            }
         }
     }
 }

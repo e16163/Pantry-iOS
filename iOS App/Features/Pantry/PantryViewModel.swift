@@ -48,9 +48,18 @@ final class PantryViewModel {
         add()
     }
 
-    func delete(at offsets: IndexSet) {
+    /// Pantry items grouped by category, in `IngredientCategory` order, skipping empty categories.
+    var sections: [(category: IngredientCategory, items: [PantryItem])] {
+        IngredientCategory.allCases.compactMap { category in
+            let matching = items.filter { $0.category == category }
+            return matching.isEmpty ? nil : (category, matching)
+        }
+    }
+
+    func delete(at offsets: IndexSet, in category: IngredientCategory) {
+        let matching = items.filter { $0.category == category }
         for index in offsets {
-            context.delete(items[index])
+            context.delete(matching[index])
         }
         load()
     }
