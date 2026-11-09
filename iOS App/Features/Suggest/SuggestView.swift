@@ -20,7 +20,7 @@ struct SuggestView: View {
                     }
                 }
                 Section {
-                    ForEach(viewModel.recipes, id: \.title) { recipe in
+                    ForEach(Array(viewModel.recipes.enumerated()), id: \.offset) { _, recipe in
                         NavigationLink {
                             RecipeDetailView(viewModel: viewModel.detailViewModel(for: recipe))
                         } label: {
