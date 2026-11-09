@@ -1,20 +1,65 @@
-# Fridge-to-Recipe App: 3-Week Plan
+# Fridge-to-Recipe App: Project Plan
 
-An iOS app that recommends recipes from ingredients you already have. Snap a photo of your fridge or type ingredients in, and get meals you can make without buying anything.
+An iOS app that recommends recipes from ingredients you already have. Type ingredients in or snap a photo of your fridge, and get meals you can make without buying anything.
 
-**Stack:** Swift, SwiftUI, PhotosUI, Foundation Models, SwiftData, Vision (possibly). No auth, no paid APIs.
+**Stack:** Swift, SwiftUI, PhotosUI, Foundation Models, SwiftData, Vision + Core ML. No auth, no paid APIs.
 
-## Before you start: two decisions
+**Board:** https://github.com/users/e16163/projects/3. It's the source of truth for tasks; this file holds the plan and decisions.
 
-1. **Lower the deployment target to iOS 26.0.** The Foundation Models framework has been around since iOS 26. At 27.2, only phones on the newest iOS can run the demo build.
-2. **Treat photo recognition as the riskiest feature and test it in the first two days.** Options, best first:
-   - **A.** If the Foundation Models version on your OS takes image input, use it. Check this on a real device.
-   - **B.** Use Vision's `ClassifyImageRequest`. It runs on every device and knows many food labels, but it guesses whole-image labels and doesn't find each item.
-   - **C.** Use manual entry only, with fast autocomplete. This one must work no matter what.
+_Last updated Nov 9. Week 1 went into planning, so the build is compressed into Nov 10–23._
 
-   Whichever you pick, **detected items always go to a review screen** where the user can confirm, edit or delete them.
+## Decisions
 
-Foundation Models only runs on Apple Intelligence devices (iPhone 15 Pro or newer, with Apple Intelligence turned on). Check `SystemLanguageModel.default.availability` and use the fallback below.
+| # | Decision | Status |
+|---|---|---|
+| 1 | Demo is ~Nov 23; feature freeze Fri Nov 21 | ✅ |
+| 2 | Demo device: e16163's Apple Intelligence iPhone | ✅ |
+| 3 | No fixed roles: pull-based Kanban (see [How we work](#how-we-work)) | ✅ |
+| 4 | Minimum iOS 26.0 (Foundation Models' first release) | ✅ Done |
+| 5 | Recipes come from Foundation Models; bundled `fallback_recipes.json` when the model is unavailable | ✅ |
+| 6 | Keep full scope except stretch goals (expiration dates, expiring-first, dietary prefs, cook timers): closed, reopen if ahead | ✅ |
+| 7 | Photo detection: pre-trained **YOLOv8 (Open Images V7) Core ML model** + **Vision text recognition** for packaging labels. Final call in #53 after spikes; hard cutoff **Nov 18** | 🟡 Pending spikes |
+| 8 | Is ambervermaa on the team? (repo invite pending, not on the project) | 🟡 Open |
+
+Mentor feedback (Nov 9): prioritize manual entry and recipe recommendations; fridge scanning is a bonus. The plan follows this: manual entry is the guaranteed path, and photo detection always goes through a review sheet.
+
+## Timeline
+
+| Date | Checkpoint |
+|---|---|
+| **Tue Nov 11** | App runs on a phone with 3 tabs; AI test returns recipes |
+| **Sat Nov 15** | ⭐ **Core loop works on device:** type ingredients → generate → open → save. This alone is a passable demo. |
+| **Tue Nov 18** | **Photo cutoff:** if detection isn't reliable, demo with manual entry only |
+| **Fri Nov 21** | **Feature freeze:** bug fixes only |
+| **~Nov 23** | Demo |
+
+### Week 2 (Nov 10–16): Foundation + core loop
+- [ ] Setup: deployment target ✅, `.gitignore`, folder structure, tab shell
+- [ ] Spikes: Foundation Models recipe generation; YOLO vs Vision detection → decision
+- [ ] SwiftData models; pantry list + manual entry with autocomplete
+- [ ] `RecipeGenerator`, pantry-only validation, normalization, fallback recipes, availability check
+- [ ] Suggest screen, recipe cards, detail view, Saved tab
+- [ ] Camera / PhotosPicker capture
+- → verify: on device, type ingredients → recipes → save works end to end
+
+### Week 3 (Nov 17–23): Photo, polish, demo
+- [ ] IngredientDetector + review sheet (cutoff Nov 18)
+- [ ] Streaming results, cook mode
+- [ ] Empty/loading/error states, accessibility, app icon, visual polish
+- [ ] Unit tests, bug bash, freeze, demo build, rehearsal, backup video
+
+## How we work
+
+1. **Pull, don't wait.** Take the highest-priority card in **Todo** (P0 → P1 → P2) whose "Depends on" cards are Done.
+2. **Assign yourself** and move it to **In Progress**. The **My Cards** view shows yours.
+3. **Max 2 cards In Progress per person.**
+4. **Unblockers first.** Critical path:
+   `#46/#47/#48 setup → #56 models → #54 AI spike → #62 RecipeGenerator → #68 Suggest`
+   `#58 pantry list → #59 manual entry` · `#69 card → #70 detail → #71 Saved`
+5. **Avoid collisions:** check In Progress; comment on the card if you'll touch the same screen as someone else.
+6. **Feature PRs:** small (<300 lines), `Closes #N` in the body, one teammate reviews within 24 h, card → **In Review**.
+7. **Merge to `main` at least daily.**
+8. **Daily check-in** in the team channel: done / next / blocked.
 
 ## Architecture
 
@@ -22,23 +67,25 @@ Foundation Models only runs on Apple Intelligence devices (iPhone 15 Pro or newe
 iOS App/
 ├── Models/            SwiftData: PantryItem, SavedRecipe
 ├── AI/                RecipeGenerator (LanguageModelSession + @Generable types)
-│                      IngredientDetector (whatever the spike picks)
+│                      IngredientDetector (YOLO Core ML + Vision text recognition)
 ├── Features/
 │   ├── Pantry/        list, manual add, photo → review
 │   ├── Suggest/       filters, recipe cards, detail
 │   ├── Cook/          step-by-step mode
 │   └── Saved/
-└── Resources/         fallback_recipes.json (~30 recipes)
+└── Resources/         fallback_recipes.json (~30 recipes), ingredients.json
 ```
 
 **Data**
-- `PantryItem`: name, category, addedAt, expiresAt? (stretch)
+- `PantryItem`: name, category, addedAt
 - `SavedRecipe`: title, minutes, difficulty, ingredients [String], steps [String], savedAt
 - `@Generable struct RecipeSuggestion`: title, summary, minutes, difficulty, ingredientsUsed, steps
 
 **Prompting rule:** "Use only these ingredients, plus pantry staples (salt, pepper, oil, water)." After generation, check in code that each recipe's `ingredientsUsed` is a subset of the pantry, and drop or flag recipes that aren't.
 
-**Fallback:** If the model is unavailable, match the pantry against `fallback_recipes.json` by ingredient overlap.
+**Fallback:** If `SystemLanguageModel.default.availability` isn't available, match the pantry against `fallback_recipes.json` by ingredient overlap.
+
+**Photo detection:** run a pre-trained YOLOv8 model (Open Images V7, about 600 classes including many foods), exported to Core ML (`yolo export model=yolov8n-oiv7.pt format=coreml nms=True`), through Vision. Add `RecognizeTextRequest` to read packaging labels ("MILK", "salsa"). Map labels to ingredient names, normalize them, and always show the review sheet.
 
 **Screens:** 3 tabs.
 - **Pantry:** list, + manual add, camera/photo button → review sheet
@@ -47,50 +94,18 @@ iOS App/
 
 **Cook mode:** one step per page, large text, the screen stays awake (`isIdleTimerDisabled`).
 
-## Timeline
-
-### Week 1 (Nov 3–9): Foundation + spikes
-- [ ] Set the deployment target, folder structure, tab shell → verify: builds on device
-- [ ] Photo spike (A vs B) on real hardware with 5 real fridge photos → verify: write down the results and decide
-- [ ] Foundation Models spike: hard-coded ingredients → `[RecipeSuggestion]` → verify: 3 valid recipes in under 10 seconds
-- [ ] SwiftData models and Pantry CRUD with manual entry → verify: items survive an app relaunch
-
-### Week 2 (Nov 10–16): Core loop
-- [ ] `RecipeGenerator` with the time filter, streaming, and the subset check
-- [ ] Recipe cards and detail view, plus save/unsave
-- [ ] Photo → detect → review → add to pantry
-- [ ] Model-unavailable fallback with the bundled JSON
-- → verify: on device, photo → pantry → recipes → save works end to end
-
-### Week 3 (Nov 17–23): Finish + demo
-- [ ] Cook mode
-- [ ] Empty, loading and error states; accessibility pass (Dynamic Type, VoiceOver labels)
-- [ ] Visual polish: recipe card design, app icon
-- [ ] Stretch: expiration dates, then "use soon" items placed first in the prompt
-- [ ] **Feature freeze 2 days before the demo**, bug bash, rehearse the demo script
-
-## GitHub Projects setup
-- Columns: Backlog → This Week → In Progress → Review → Done
-- One issue per checkbox above, with labels `feature`, `spike`, `bug`, `stretch` and a milestone per week
-- Small PRs into `main`, with one teammate reviewing each
-
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| Photo detection is poor | Review screen; manual entry stays the main path |
-| Demo phone lacks Apple Intelligence | Confirm the demo device in week 1; bundled-recipe fallback |
-| Model makes up ingredients | Subset check plus prompt rules |
-| Slow generation | Stream results; ask for 3 recipes, not 10 |
-| Scope creep | Expiration tracking stays stretch-only until week 3 |
+| Photo detection is poor | Review sheet; manual entry is the primary path; Nov 18 cutoff |
+| Model invents ingredients | Pantry-only validation |
+| Model unavailable on a device | Fallback recipes + availability check |
+| Slow generation | Streaming; 3 recipes per request |
+| Lost Week 1 | Core loop checkpoint Sat Nov 15; stretch goals cut |
 
 ## Demo script (2 min)
-1. Take a photo of the fridge and fix one wrong item on the review screen.
+1. Take a photo of the fridge and fix one wrong item on the review screen (or type ingredients if photo was cut).
 2. Set the filter to ≤30 min and generate.
 3. Open a recipe, save it, then start cook mode.
 4. Show the Saved tab.
-
-## Open questions
-- Team size and how to split the work (e.g. Pantry/photo, AI/recipes, UI/cook mode)
-- Exact demo date (sets the freeze date)
-- Who has an Apple Intelligence-capable iPhone for testing?
