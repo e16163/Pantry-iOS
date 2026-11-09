@@ -1,0 +1,802 @@
+[
+ {
+  "name": "apple cider vinegar",
+  "category": "condiments"
+ },
+ {
+  "name": "balsamic vinegar",
+  "category": "condiments"
+ },
+ {
+  "name": "barbecue sauce",
+  "category": "condiments"
+ },
+ {
+  "name": "dijon mustard",
+  "category": "condiments"
+ },
+ {
+  "name": "fish sauce",
+  "category": "condiments"
+ },
+ {
+  "name": "hoisin sauce",
+  "category": "condiments"
+ },
+ {
+  "name": "hot sauce",
+  "category": "condiments"
+ },
+ {
+  "name": "jam",
+  "category": "condiments"
+ },
+ {
+  "name": "ketchup",
+  "category": "condiments"
+ },
+ {
+  "name": "mayonnaise",
+  "category": "condiments"
+ },
+ {
+  "name": "mustard",
+  "category": "condiments"
+ },
+ {
+  "name": "pesto",
+  "category": "condiments"
+ },
+ {
+  "name": "ranch dressing",
+  "category": "condiments"
+ },
+ {
+  "name": "relish",
+  "category": "condiments"
+ },
+ {
+  "name": "rice vinegar",
+  "category": "condiments"
+ },
+ {
+  "name": "salsa",
+  "category": "condiments"
+ },
+ {
+  "name": "soy sauce",
+  "category": "condiments"
+ },
+ {
+  "name": "sriracha",
+  "category": "condiments"
+ },
+ {
+  "name": "teriyaki sauce",
+  "category": "condiments"
+ },
+ {
+  "name": "white vinegar",
+  "category": "condiments"
+ },
+ {
+  "name": "worcestershire sauce",
+  "category": "condiments"
+ },
+ {
+  "name": "american cheese",
+  "category": "dairy"
+ },
+ {
+  "name": "butter",
+  "category": "dairy"
+ },
+ {
+  "name": "cheddar cheese",
+  "category": "dairy"
+ },
+ {
+  "name": "cottage cheese",
+  "category": "dairy"
+ },
+ {
+  "name": "cream cheese",
+  "category": "dairy"
+ },
+ {
+  "name": "feta",
+  "category": "dairy"
+ },
+ {
+  "name": "greek yogurt",
+  "category": "dairy"
+ },
+ {
+  "name": "half and half",
+  "category": "dairy"
+ },
+ {
+  "name": "heavy cream",
+  "category": "dairy"
+ },
+ {
+  "name": "milk",
+  "category": "dairy"
+ },
+ {
+  "name": "monterey jack",
+  "category": "dairy"
+ },
+ {
+  "name": "mozzarella",
+  "category": "dairy"
+ },
+ {
+  "name": "parmesan",
+  "category": "dairy"
+ },
+ {
+  "name": "ricotta",
+  "category": "dairy"
+ },
+ {
+  "name": "sour cream",
+  "category": "dairy"
+ },
+ {
+  "name": "swiss cheese",
+  "category": "dairy"
+ },
+ {
+  "name": "yogurt",
+  "category": "dairy"
+ },
+ {
+  "name": "bagel",
+  "category": "grains"
+ },
+ {
+  "name": "bread",
+  "category": "grains"
+ },
+ {
+  "name": "breadcrumb",
+  "category": "grains"
+ },
+ {
+  "name": "brown rice",
+  "category": "grains"
+ },
+ {
+  "name": "cereal",
+  "category": "grains"
+ },
+ {
+  "name": "corn tortilla",
+  "category": "grains"
+ },
+ {
+  "name": "cornmeal",
+  "category": "grains"
+ },
+ {
+  "name": "couscous",
+  "category": "grains"
+ },
+ {
+  "name": "cracker",
+  "category": "grains"
+ },
+ {
+  "name": "english muffin",
+  "category": "grains"
+ },
+ {
+  "name": "flour",
+  "category": "grains"
+ },
+ {
+  "name": "flour tortilla",
+  "category": "grains"
+ },
+ {
+  "name": "granola",
+  "category": "grains"
+ },
+ {
+  "name": "hamburger bun",
+  "category": "grains"
+ },
+ {
+  "name": "hot dog bun",
+  "category": "grains"
+ },
+ {
+  "name": "macaroni",
+  "category": "grains"
+ },
+ {
+  "name": "oat",
+  "category": "grains"
+ },
+ {
+  "name": "pasta",
+  "category": "grains"
+ },
+ {
+  "name": "penne",
+  "category": "grains"
+ },
+ {
+  "name": "pita bread",
+  "category": "grains"
+ },
+ {
+  "name": "pizza dough",
+  "category": "grains"
+ },
+ {
+  "name": "quinoa",
+  "category": "grains"
+ },
+ {
+  "name": "ramen noodle",
+  "category": "grains"
+ },
+ {
+  "name": "rice",
+  "category": "grains"
+ },
+ {
+  "name": "rice noodle",
+  "category": "grains"
+ },
+ {
+  "name": "spaghetti",
+  "category": "grains"
+ },
+ {
+  "name": "tortilla chip",
+  "category": "grains"
+ },
+ {
+  "name": "chicken nugget",
+  "category": "other"
+ },
+ {
+  "name": "frozen dumpling",
+  "category": "other"
+ },
+ {
+  "name": "frozen french fry",
+  "category": "other"
+ },
+ {
+  "name": "frozen mixed vegetable",
+  "category": "other"
+ },
+ {
+  "name": "frozen pizza",
+  "category": "other"
+ },
+ {
+  "name": "frozen waffle",
+  "category": "other"
+ },
+ {
+  "name": "baking powder",
+  "category": "pantry"
+ },
+ {
+  "name": "baking soda",
+  "category": "pantry"
+ },
+ {
+  "name": "brown sugar",
+  "category": "pantry"
+ },
+ {
+  "name": "canned corn",
+  "category": "pantry"
+ },
+ {
+  "name": "canned tomato",
+  "category": "pantry"
+ },
+ {
+  "name": "canned tuna",
+  "category": "pantry"
+ },
+ {
+  "name": "chicken broth",
+  "category": "pantry"
+ },
+ {
+  "name": "chocolate chip",
+  "category": "pantry"
+ },
+ {
+  "name": "coconut milk",
+  "category": "pantry"
+ },
+ {
+  "name": "cornstarch",
+  "category": "pantry"
+ },
+ {
+  "name": "diced tomato",
+  "category": "pantry"
+ },
+ {
+  "name": "honey",
+  "category": "pantry"
+ },
+ {
+  "name": "maple syrup",
+  "category": "pantry"
+ },
+ {
+  "name": "marinara sauce",
+  "category": "pantry"
+ },
+ {
+  "name": "olive oil",
+  "category": "pantry"
+ },
+ {
+  "name": "powdered sugar",
+  "category": "pantry"
+ },
+ {
+  "name": "raisin",
+  "category": "pantry"
+ },
+ {
+  "name": "sesame oil",
+  "category": "pantry"
+ },
+ {
+  "name": "sugar",
+  "category": "pantry"
+ },
+ {
+  "name": "tomato paste",
+  "category": "pantry"
+ },
+ {
+  "name": "tomato sauce",
+  "category": "pantry"
+ },
+ {
+  "name": "vanilla extract",
+  "category": "pantry"
+ },
+ {
+  "name": "vegetable broth",
+  "category": "pantry"
+ },
+ {
+  "name": "vegetable oil",
+  "category": "pantry"
+ },
+ {
+  "name": "yeast",
+  "category": "pantry"
+ },
+ {
+  "name": "apple",
+  "category": "produce"
+ },
+ {
+  "name": "arugula",
+  "category": "produce"
+ },
+ {
+  "name": "asparagus",
+  "category": "produce"
+ },
+ {
+  "name": "avocado",
+  "category": "produce"
+ },
+ {
+  "name": "banana",
+  "category": "produce"
+ },
+ {
+  "name": "basil",
+  "category": "produce"
+ },
+ {
+  "name": "beet",
+  "category": "produce"
+ },
+ {
+  "name": "bell pepper",
+  "category": "produce"
+ },
+ {
+  "name": "blueberry",
+  "category": "produce"
+ },
+ {
+  "name": "broccoli",
+  "category": "produce"
+ },
+ {
+  "name": "brussels sprout",
+  "category": "produce"
+ },
+ {
+  "name": "butternut squash",
+  "category": "produce"
+ },
+ {
+  "name": "cabbage",
+  "category": "produce"
+ },
+ {
+  "name": "carrot",
+  "category": "produce"
+ },
+ {
+  "name": "cauliflower",
+  "category": "produce"
+ },
+ {
+  "name": "celery",
+  "category": "produce"
+ },
+ {
+  "name": "cherry tomato",
+  "category": "produce"
+ },
+ {
+  "name": "cilantro",
+  "category": "produce"
+ },
+ {
+  "name": "corn",
+  "category": "produce"
+ },
+ {
+  "name": "cucumber",
+  "category": "produce"
+ },
+ {
+  "name": "eggplant",
+  "category": "produce"
+ },
+ {
+  "name": "garlic",
+  "category": "produce"
+ },
+ {
+  "name": "ginger",
+  "category": "produce"
+ },
+ {
+  "name": "grape",
+  "category": "produce"
+ },
+ {
+  "name": "green bean",
+  "category": "produce"
+ },
+ {
+  "name": "green onion",
+  "category": "produce"
+ },
+ {
+  "name": "jalapeño",
+  "category": "produce"
+ },
+ {
+  "name": "kale",
+  "category": "produce"
+ },
+ {
+  "name": "lemon",
+  "category": "produce"
+ },
+ {
+  "name": "lettuce",
+  "category": "produce"
+ },
+ {
+  "name": "lime",
+  "category": "produce"
+ },
+ {
+  "name": "mango",
+  "category": "produce"
+ },
+ {
+  "name": "mint",
+  "category": "produce"
+ },
+ {
+  "name": "mushroom",
+  "category": "produce"
+ },
+ {
+  "name": "onion",
+  "category": "produce"
+ },
+ {
+  "name": "orange",
+  "category": "produce"
+ },
+ {
+  "name": "parsley",
+  "category": "produce"
+ },
+ {
+  "name": "pea",
+  "category": "produce"
+ },
+ {
+  "name": "peach",
+  "category": "produce"
+ },
+ {
+  "name": "pear",
+  "category": "produce"
+ },
+ {
+  "name": "pineapple",
+  "category": "produce"
+ },
+ {
+  "name": "potato",
+  "category": "produce"
+ },
+ {
+  "name": "pumpkin",
+  "category": "produce"
+ },
+ {
+  "name": "radish",
+  "category": "produce"
+ },
+ {
+  "name": "red onion",
+  "category": "produce"
+ },
+ {
+  "name": "romaine",
+  "category": "produce"
+ },
+ {
+  "name": "shallot",
+  "category": "produce"
+ },
+ {
+  "name": "spinach",
+  "category": "produce"
+ },
+ {
+  "name": "strawberry",
+  "category": "produce"
+ },
+ {
+  "name": "sweet potato",
+  "category": "produce"
+ },
+ {
+  "name": "tomato",
+  "category": "produce"
+ },
+ {
+  "name": "watermelon",
+  "category": "produce"
+ },
+ {
+  "name": "zucchini",
+  "category": "produce"
+ },
+ {
+  "name": "almond",
+  "category": "protein"
+ },
+ {
+  "name": "bacon",
+  "category": "protein"
+ },
+ {
+  "name": "beef",
+  "category": "protein"
+ },
+ {
+  "name": "black bean",
+  "category": "protein"
+ },
+ {
+  "name": "cashew",
+  "category": "protein"
+ },
+ {
+  "name": "chicken breast",
+  "category": "protein"
+ },
+ {
+  "name": "chicken thigh",
+  "category": "protein"
+ },
+ {
+  "name": "chickpea",
+  "category": "protein"
+ },
+ {
+  "name": "deli meat",
+  "category": "protein"
+ },
+ {
+  "name": "edamame",
+  "category": "protein"
+ },
+ {
+  "name": "egg",
+  "category": "protein"
+ },
+ {
+  "name": "ground beef",
+  "category": "protein"
+ },
+ {
+  "name": "ground turkey",
+  "category": "protein"
+ },
+ {
+  "name": "ham",
+  "category": "protein"
+ },
+ {
+  "name": "hot dog",
+  "category": "protein"
+ },
+ {
+  "name": "kidney bean",
+  "category": "protein"
+ },
+ {
+  "name": "lentil",
+  "category": "protein"
+ },
+ {
+  "name": "peanut butter",
+  "category": "protein"
+ },
+ {
+  "name": "pepperoni",
+  "category": "protein"
+ },
+ {
+  "name": "pinto bean",
+  "category": "protein"
+ },
+ {
+  "name": "pork chop",
+  "category": "protein"
+ },
+ {
+  "name": "rotisserie chicken",
+  "category": "protein"
+ },
+ {
+  "name": "salmon",
+  "category": "protein"
+ },
+ {
+  "name": "sausage",
+  "category": "protein"
+ },
+ {
+  "name": "shrimp",
+  "category": "protein"
+ },
+ {
+  "name": "steak",
+  "category": "protein"
+ },
+ {
+  "name": "tilapia",
+  "category": "protein"
+ },
+ {
+  "name": "tofu",
+  "category": "protein"
+ },
+ {
+  "name": "tuna",
+  "category": "protein"
+ },
+ {
+  "name": "turkey",
+  "category": "protein"
+ },
+ {
+  "name": "walnut",
+  "category": "protein"
+ },
+ {
+  "name": "bay leaf",
+  "category": "spices"
+ },
+ {
+  "name": "black pepper",
+  "category": "spices"
+ },
+ {
+  "name": "cayenne pepper",
+  "category": "spices"
+ },
+ {
+  "name": "chili powder",
+  "category": "spices"
+ },
+ {
+  "name": "cinnamon",
+  "category": "spices"
+ },
+ {
+  "name": "cumin",
+  "category": "spices"
+ },
+ {
+  "name": "curry powder",
+  "category": "spices"
+ },
+ {
+  "name": "garlic powder",
+  "category": "spices"
+ },
+ {
+  "name": "italian seasoning",
+  "category": "spices"
+ },
+ {
+  "name": "nutmeg",
+  "category": "spices"
+ },
+ {
+  "name": "onion powder",
+  "category": "spices"
+ },
+ {
+  "name": "oregano",
+  "category": "spices"
+ },
+ {
+  "name": "paprika",
+  "category": "spices"
+ },
+ {
+  "name": "red pepper flake",
+  "category": "spices"
+ },
+ {
+  "name": "rosemary",
+  "category": "spices"
+ },
+ {
+  "name": "salt",
+  "category": "spices"
+ },
+ {
+  "name": "smoked paprika",
+  "category": "spices"
+ },
+ {
+  "name": "taco seasoning",
+  "category": "spices"
+ },
+ {
+  "name": "thyme",
+  "category": "spices"
+ },
+ {
+  "name": "turmeric",
+  "category": "spices"
+ }
+]
