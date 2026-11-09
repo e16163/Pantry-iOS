@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct RootView: View {
@@ -18,4 +19,5 @@ struct RootView: View {
 
 #Preview {
     RootView()
+        .modelContainer(.preview)
 }
