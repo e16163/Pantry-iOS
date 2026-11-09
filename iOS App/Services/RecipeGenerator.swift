@@ -26,14 +26,15 @@ struct RecipeGenerator {
         SystemLanguageModel.default.availability == .available
     }
 
-    func recipes(from ingredients: [String]) async throws -> [RecipeSuggestion] {
+    func recipes(from ingredients: [String], maxMinutes: Int? = nil) async throws -> [RecipeSuggestion] {
+        let timeRule = maxMinutes.map { " Each recipe must take at most \($0) minutes in total." } ?? ""
         let session = LanguageModelSession(instructions: """
             You suggest simple home recipes. Use only the ingredients the user lists, \
             plus basic staples: salt, pepper, oil, and water. Never add other ingredients. \
             Name each ingredient exactly as it appears in the user's list.
             """)
         let response = try await session.respond(
-            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 3 different recipes.",
+            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 3 different recipes.\(timeRule)",
             generating: RecipeList.self
         )
         return response.content.recipes
