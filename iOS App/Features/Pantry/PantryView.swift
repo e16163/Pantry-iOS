@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PantryView: View {
     @Bindable var viewModel: PantryViewModel
+    @FocusState private var isFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -10,8 +11,22 @@ struct PantryView: View {
                 Section {
                     HStack {
                         TextField("Add an ingredient", text: $viewModel.newItemName)
-                            .onSubmit(viewModel.add)
+                            .focused($isFieldFocused)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .submitLabel(.done)
+                            .onSubmit {
+                                viewModel.add()
+                                isFieldFocused = true
+                            }
                         Button("Add", action: viewModel.add)
+                    }
+                    ForEach(viewModel.suggestions, id: \.self) { name in
+                        Button {
+                            viewModel.add(suggestion: name)
+                        } label: {
+                            Label(name, systemImage: "plus.circle")
+                        }
                     }
                 }
                 Section("\(viewModel.items.count) ingredients") {
