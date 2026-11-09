@@ -13,12 +13,13 @@ An iOS app that recommends recipes from ingredients you already have. Type your 
 |---|---|
 | Xcode | 27.2 or later (the project file was created with 27.2) |
 | iOS | 26.0 or later |
-| AI recipes | An Apple Intelligence device (iPhone 15 Pro or newer) with Apple Intelligence turned on. Other devices and most simulators fall back to bundled recipes. |
+| AI recipes | An Apple Intelligence device (iPhone 15 Pro or newer) with Apple Intelligence turned on. **Test recipe generation on a real iPhone:** the iOS 27 simulator on a macOS 26 Mac reports the model as available but every request fails. |
 
 ## Getting started
 
 1. Clone the repo and open `iOS App.xcodeproj`.
 2. Pick an iPhone simulator and press **⌘R**.
+3. Run the unit tests with **⌘U**. They live in `iOS AppTests/` and use Swift Testing.
 
 **Running on your own iPhone:** select the **iOS App** target → **Signing & Capabilities** → choose your **Team** (your personal Apple ID works). Xcode handles the rest. Don't commit signing changes unless the team agrees on one setup.
 
