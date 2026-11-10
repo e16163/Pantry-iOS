@@ -53,9 +53,23 @@ struct PantryView: View {
                 }
             }
             .navigationTitle("Pantry")
+            .toolbarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image(.logo)
+                            .resizable()
+                            .frame(width: 28, height: 28)
+                            .accessibilityHidden(true)
+                        Text("pantry")
+                            .font(.title2.weight(.heavy))
+                            .foregroundStyle(.tint)
+                    }
+                }
                 if isFieldFocused {
-                    Button("Done") { isFieldFocused = false }
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Done") { isFieldFocused = false }
+                    }
                 }
             }
         }

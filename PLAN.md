@@ -1,4 +1,4 @@
-# Fridge-to-Recipe App: Project Plan
+# Pantry: Project Plan
 
 An iOS app that recommends recipes from ingredients you already have. Type ingredients in or snap a photo of your fridge, and get meals you can make without buying anything.
 

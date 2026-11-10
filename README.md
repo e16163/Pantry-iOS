@@ -1,4 +1,4 @@
-# Fridge-to-Recipe
+# Pantry
 
 An iOS app that recommends recipes from ingredients you already have. Type your ingredients in (or snap a photo of your fridge), and get meals you can make without buying anything. Built for the F26 iOS Bootcamp.
 
