@@ -24,6 +24,7 @@ struct RootView: View {
                 SavedView(viewModel: saved)
             }
         }
+        .fontDesign(.rounded)
     }
 }
 
