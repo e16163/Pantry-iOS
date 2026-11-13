@@ -41,6 +41,31 @@ struct RecipeGenerator {
         }
     }
 
+    nonisolated static let safetyMessage = "That pantry tripped a safety filter. Try removing an ingredient."
+    nonisolated static let busyMessage = "Too many requests. Wait a moment and try again."
+    nonisolated static let tooLongMessage = "Too many ingredients at once. Try fewer."
+    nonisolated static let genericMessage = "Couldn't come up with recipes right now. Try again."
+
+    static func message(for error: Error) -> String {
+        if #available(iOS 27, macOS 27, visionOS 27, *), let error = error as? LanguageModelError {
+            switch error {
+            case .guardrailViolation, .refusal: return safetyMessage
+            case .rateLimited: return busyMessage
+            case .contextSizeExceeded: return tooLongMessage
+            default: return genericMessage
+            }
+        }
+        if let error = error as? LanguageModelSession.GenerationError {
+            switch error {
+            case .guardrailViolation, .refusal: return safetyMessage
+            case .rateLimited: return busyMessage
+            case .exceededContextWindowSize: return tooLongMessage
+            default: return genericMessage
+            }
+        }
+        return genericMessage
+    }
+
     func recipes(from ingredients: [String], maxMinutes: Int? = nil) async throws -> [RecipeSuggestion] {
         let timeRule = maxMinutes.map { " Each recipe must take at most \($0) minutes in total." } ?? ""
         let session = LanguageModelSession(instructions: """

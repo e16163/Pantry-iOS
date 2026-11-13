@@ -48,7 +48,7 @@ final class SuggestViewModel {
                 errorMessage = "Couldn't find recipes that fit. Try again or allow more time."
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RecipeGenerator.message(for: error)
         }
     }
 
