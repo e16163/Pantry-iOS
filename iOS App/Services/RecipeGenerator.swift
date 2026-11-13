@@ -22,8 +22,23 @@ private struct RecipeList {
 
 /// Generates recipes from pantry ingredients with Apple's on-device model.
 struct RecipeGenerator {
-    var isAvailable: Bool {
-        SystemLanguageModel.default.availability == .available
+    var unavailableMessage: String? {
+        Self.message(for: SystemLanguageModel.default.availability)
+    }
+
+    static func message(for availability: SystemLanguageModel.Availability) -> String? {
+        switch availability {
+        case .available:
+            nil
+        case .unavailable(.deviceNotEligible):
+            "This device doesn't support Apple Intelligence, so recipe ideas aren't available."
+        case .unavailable(.appleIntelligenceNotEnabled):
+            "Turn on Apple Intelligence in Settings to get recipe ideas."
+        case .unavailable(.modelNotReady):
+            "Apple Intelligence is still getting ready. Try again in a few minutes."
+        case .unavailable:
+            "Apple Intelligence isn't available on this device."
+        }
     }
 
     func recipes(from ingredients: [String], maxMinutes: Int? = nil) async throws -> [RecipeSuggestion] {
