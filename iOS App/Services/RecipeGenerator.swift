@@ -41,10 +41,10 @@ struct RecipeGenerator {
         }
     }
 
-    static let safetyMessage = "That pantry tripped a safety filter. Try removing an ingredient."
-    static let busyMessage = "Too many requests. Wait a moment and try again."
-    static let tooLongMessage = "Too many ingredients at once. Try fewer."
-    static let genericMessage = "Couldn't come up with recipes right now. Try again."
+    nonisolated static let safetyMessage = "That pantry tripped a safety filter. Try removing an ingredient."
+    nonisolated static let busyMessage = "Too many requests. Wait a moment and try again."
+    nonisolated static let tooLongMessage = "Too many ingredients at once. Try fewer."
+    nonisolated static let genericMessage = "Couldn't come up with recipes right now. Try again."
 
     static func message(for error: Error) -> String {
         if #available(iOS 27, macOS 27, visionOS 27, *), let error = error as? LanguageModelError {
