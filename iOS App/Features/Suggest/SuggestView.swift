@@ -23,12 +23,28 @@ struct SuggestView: View {
                         }
                         .disabled(!viewModel.canGenerate)
                     }
-                    if let message = viewModel.errorMessage {
-                        Text(message).foregroundStyle(.red)
+                }
+                if let message = viewModel.errorMessage {
+                    ContentUnavailableView {
+                        Label {
+                            Text("No recipes this time")
+                        } icon: {
+                            Image(.error).illustration()
+                        }
+                    } description: {
+                        Text(message)
                     }
-                } footer: {
-                    if viewModel.pantryCount == 0 {
-                        Text("Add ingredients in the Pantry tab first.")
+                } else if viewModel.recipes.isEmpty && !viewModel.isGenerating {
+                    ContentUnavailableView {
+                        Label {
+                            Text("Ready when you are")
+                        } icon: {
+                            Image(.suggestReady).illustration()
+                        }
+                    } description: {
+                        Text(viewModel.pantryCount == 0
+                             ? "Add ingredients in the Pantry tab first."
+                             : "Pick a time, then tap Generate recipes.")
                     }
                 }
                 Section {
