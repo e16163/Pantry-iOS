@@ -33,11 +33,15 @@ struct PantryView: View {
                     }
                 }
                 if viewModel.items.isEmpty {
-                    ContentUnavailableView(
-                        "Your pantry is empty",
-                        systemImage: "refrigerator",
-                        description: Text("Add what you have, and we'll suggest recipes you can make.")
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text("Your pantry is empty")
+                        } icon: {
+                            Image(.emptyPantry).illustration()
+                        }
+                    } description: {
+                        Text("Add what you have, and we'll suggest recipes you can make.")
+                    }
                 }
                 ForEach(viewModel.sections, id: \.category) { section in
                     Section {

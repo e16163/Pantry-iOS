@@ -18,11 +18,15 @@ struct SavedView: View {
             }
             .overlay {
                 if viewModel.recipes.isEmpty {
-                    ContentUnavailableView(
-                        "No saved recipes",
-                        systemImage: "bookmark",
-                        description: Text("Tap the bookmark on a recipe to keep it here.")
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text("No saved recipes")
+                        } icon: {
+                            Image(.emptySaved).illustration()
+                        }
+                    } description: {
+                        Text("Tap the bookmark on a recipe to keep it here.")
+                    }
                 }
             }
             .navigationTitle("Saved")
