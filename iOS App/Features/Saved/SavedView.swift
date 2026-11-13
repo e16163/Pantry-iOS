@@ -16,6 +16,15 @@ struct SavedView: View {
                 }
                 .onDelete(perform: viewModel.delete)
             }
+            .overlay {
+                if viewModel.recipes.isEmpty {
+                    ContentUnavailableView(
+                        "No saved recipes",
+                        systemImage: "bookmark",
+                        description: Text("Tap the bookmark on a recipe to keep it here.")
+                    )
+                }
+            }
             .navigationTitle("Saved")
             .onAppear(perform: viewModel.load)
         }
