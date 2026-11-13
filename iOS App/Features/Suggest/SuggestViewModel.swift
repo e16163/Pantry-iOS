@@ -32,8 +32,8 @@ final class SuggestViewModel {
 
     func generate() async {
         errorMessage = nil
-        guard generator.isAvailable else {
-            errorMessage = "Apple Intelligence isn't available on this device."
+        if let message = generator.unavailableMessage {
+            errorMessage = message
             return
         }
         let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
