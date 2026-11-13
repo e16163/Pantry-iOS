@@ -7,6 +7,7 @@ import SwiftData
 final class RecipeDetailViewModel {
     let recipe: RecipeSuggestion
     private(set) var isSaved = false
+    private(set) var checked: Set<String> = []
 
     private let context: ModelContext
 
@@ -29,6 +30,12 @@ final class RecipeDetailViewModel {
             ))
         }
         isSaved = savedCopy() != nil
+    }
+
+    func toggle(_ ingredient: String) {
+        if checked.remove(ingredient) == nil {
+            checked.insert(ingredient)
+        }
     }
 
     private func savedCopy() -> SavedRecipe? {

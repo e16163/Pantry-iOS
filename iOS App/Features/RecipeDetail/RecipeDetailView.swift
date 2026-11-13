@@ -14,11 +14,35 @@ struct RecipeDetailView: View {
                 Text("\(viewModel.recipe.minutes) min · \(viewModel.recipe.difficulty)")
             }
             Section("Ingredients") {
-                ForEach(viewModel.recipe.ingredients, id: \.self) { Text($0) }
+                ForEach(viewModel.recipe.ingredients, id: \.self) { ingredient in
+                    let isChecked = viewModel.checked.contains(ingredient)
+                    Button {
+                        viewModel.toggle(ingredient)
+                    } label: {
+                        Label {
+                            Text(ingredient)
+                                .strikethrough(isChecked)
+                                .foregroundStyle(isChecked ? .secondary : .primary)
+                        } icon: {
+                            Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(.tint)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isChecked ? .isSelected : [])
+                }
             }
             Section("Steps") {
                 ForEach(Array(viewModel.recipe.steps.enumerated()), id: \.offset) { index, step in
-                    Text("\(index + 1). \(step)")
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("\(index + 1)")
+                            .monospacedDigit()
+                            .fontWeight(.bold)
+                            .foregroundStyle(.tint)
+                        Text(step)
+                    }
                 }
             }
         }
