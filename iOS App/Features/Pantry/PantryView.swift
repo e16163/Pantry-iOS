@@ -41,6 +41,8 @@ struct PantryView: View {
                         }
                     } description: {
                         Text("Add what you have, and we'll suggest recipes you can make.")
+                    } actions: {
+                        Button("Try a sample pantry", action: viewModel.addSample)
                     }
                 }
                 ForEach(viewModel.sections, id: \.category) { section in
