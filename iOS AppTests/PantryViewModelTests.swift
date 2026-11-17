@@ -69,6 +69,13 @@ struct PantryViewModelTests {
         #expect(viewModel.newItemName == "")
     }
 
+    @Test func sampleAddsKnownIngredientsOnce() {
+        viewModel.addSample()
+        viewModel.addSample()
+        #expect(viewModel.items.count == PantryViewModel.sample.count)
+        #expect(!viewModel.items.contains { $0.category == .other })
+    }
+
     @Test func sectionsGroupByCategoryInFixedOrder() {
         for name in ["rice", "egg", "spinach", "bacon", "dragon fruit"] {
             viewModel.add(suggestion: name)

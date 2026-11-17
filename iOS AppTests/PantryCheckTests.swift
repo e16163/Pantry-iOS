@@ -29,6 +29,11 @@ struct PantryCheckTests {
         #expect(!PantryCheck.usesOnlyPantry(recipe(["chicken thigh"]), pantry: pantry))
     }
 
+    @Test func coverageCountsPantryItemsAndStaples() {
+        #expect(PantryCheck.coverage(of: recipe(["egg", "salt", "bacon", "ham"]), pantry: pantry) == 0.5)
+        #expect(PantryCheck.coverage(of: recipe([]), pantry: pantry) == 0)
+    }
+
     @Test func partialWordsDontMatch() {
         #expect(!PantryCheck.usesOnlyPantry(recipe(["egg"]), pantry: ["eggplant"]))
     }
