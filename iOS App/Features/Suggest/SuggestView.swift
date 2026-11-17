@@ -18,16 +18,14 @@ struct SuggestView: View {
                         .padding(.top, 8)
                     hero
                         .padding(.horizontal, Spacing.page)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(Self.timeChips, id: \.title) { chip in
-                                Chip(systemImage: chip.systemImage, title: chip.title, isSelected: viewModel.maxMinutes == chip.minutes) {
-                                    viewModel.maxMinutes = chip.minutes
-                                }
+                    HStack(spacing: 8) {
+                        ForEach(Self.timeChips, id: \.title) { chip in
+                            Chip(systemImage: chip.systemImage, title: chip.title, isSelected: viewModel.maxMinutes == chip.minutes) {
+                                viewModel.maxMinutes = chip.minutes
                             }
                         }
-                        .padding(.horizontal, Spacing.page)
                     }
+                    .padding(.horizontal, Spacing.page)
                     SectionDivider()
                         .padding(.top, 8)
                     results
@@ -54,7 +52,7 @@ struct SuggestView: View {
                  : "Pick a time and we'll find recipes that use your pantry.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.85))
-                .padding(.trailing, 90)  // keep clear of the bowl art
+                .padding(.trailing, 90)  // keep clear of the pan art
             Button {
                 Task { await viewModel.generate() }
             } label: {
@@ -82,16 +80,13 @@ struct SuggestView: View {
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .background(alignment: .bottomTrailing) {
-            ZStack(alignment: .bottomTrailing) {
+        .background(alignment: .trailing) {
+            ZStack(alignment: .trailing) {
                 Color(red: 0.09, green: 0.15, blue: 0.14)  // near-black Pantry green
-                Image(.cookingDone)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 130, height: 130)
-                    .clipShape(.rect(cornerRadius: 28))
+                Text("🥘")  // the pan art from the first TestFlight build, kept on request
+                    .font(.system(size: 110))
                     .rotationEffect(.degrees(-12))
-                    .offset(x: 26, y: 26)
+                    .offset(x: 28, y: 34)
                     .accessibilityHidden(true)
             }
         }

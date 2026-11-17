@@ -56,7 +56,7 @@ struct PageTitle: View {
     }
 }
 
-/// Gray pill filter with an icon: filled black when selected.
+/// Gray pill filter with an icon, sharing the row's width equally: filled black when selected.
 struct Chip: View {
     let systemImage: String
     let title: String
@@ -66,10 +66,12 @@ struct Chip: View {
     var body: some View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
-                .font(.subheadline.weight(.semibold))
+                .labelStyle(.titleAndIcon)
+                .font(.footnote.weight(.semibold))
                 .lineLimit(1)
-                .padding(.horizontal, 16)
-                .frame(height: 38)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 6)
+                .frame(maxWidth: .infinity, minHeight: 38)
                 .foregroundStyle(isSelected ? AnyShapeStyle(.background) : AnyShapeStyle(.primary))
                 .background(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.fill), in: .capsule)
         }
