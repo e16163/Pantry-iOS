@@ -23,7 +23,7 @@ enum FallbackRecipes {
     /// The best `limit` recipes for this pantry: most ingredients on hand first, within the time limit.
     /// Recipes that use nothing beyond staples, or need more than half their ingredients bought, are skipped.
     static func best(for pantry: [String], maxMinutes: Int?, from recipes: [RecipeSuggestion] = all,
-                     limit: Int = 3) -> [RecipeSuggestion] {
+                     limit: Int = 6) -> [RecipeSuggestion] {
         let staplesOnly = Array(PantryCheck.staples)
         return recipes
             .filter { $0.minutes <= (maxMinutes ?? .max) }

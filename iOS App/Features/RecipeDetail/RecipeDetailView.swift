@@ -76,7 +76,7 @@ struct RecipeDetailView: View {
 
     private var ingredients: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Ingredients", subtitle: "Tap to tick off what you've got out")
+            SectionHeader(title: "Ingredients", subtitle: "What's in your pantry is already ticked")
             ForEach(viewModel.recipe.ingredients, id: \.self) { ingredient in
                 let isChecked = viewModel.checked.contains(ingredient)
                 Button {

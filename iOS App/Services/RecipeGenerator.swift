@@ -12,13 +12,13 @@ struct RecipeSuggestion {
     var ingredients: [String]
     @Guide(description: "How much of each ingredient, in the same order as ingredients, like \"2 cups\", \"1 tbsp\" or \"3\"")
     var amounts: [String] = []
-    @Guide(description: "Cooking steps in order, one short sentence each")
+    @Guide(description: "5 to 8 detailed cooking steps in order, starting with prep. Each step is 1 to 3 sentences with the heat level, how long, and how to tell it's done, like \"Cook over medium heat for 3 to 4 minutes, until the edges set but the top is still glossy.\"")
     var steps: [String]
 }
 
 @Generable
 private struct RecipeList {
-    @Guide(.count(3))
+    @Guide(.count(5))
     var recipes: [RecipeSuggestion]
 }
 
@@ -80,13 +80,18 @@ struct RecipeGenerator {
     func recipes(from ingredients: [String], maxMinutes: Int? = nil) async throws -> [RecipeSuggestion] {
         let timeRule = maxMinutes.map { " Each recipe must take at most \($0) minutes in total." } ?? ""
         let session = LanguageModelSession(instructions: """
-            You suggest simple home recipes. Use only the ingredients the user lists, \
+            You are a home cook writing recipes for a cookbook. Use only the ingredients the user lists, \
             plus basic staples: salt, pepper, oil, and water. Never add other ingredients. \
             Name each ingredient exactly as it appears in the user's list. \
-            Give an amount for every ingredient, for 2 servings.
+            Give an amount for every ingredient, for 2 servings. \
+            Make the recipes clearly different from each other: mix cuisines (for example Italian, Mexican, \
+            Asian, American, Mediterranean), meal types (breakfast, lunch, dinner, snack) and cooking methods \
+            (pan-fried, baked, roasted, simmered, no-cook). \
+            Write steps a beginner can follow without guessing: say how to cut things, the heat level, \
+            how many minutes, and what it should look, smell or feel like when it's done.
             """)
         let response = try await session.respond(
-            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 3 different recipes.\(timeRule)",
+            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 5 different recipes.\(timeRule)",
             generating: RecipeList.self
         )
         return response.content.recipes

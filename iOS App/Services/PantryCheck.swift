@@ -13,9 +13,13 @@ enum PantryCheck {
     /// Fraction of the recipe's ingredients that the pantry (plus staples) covers, from 0 to 1.
     static func coverage(of recipe: RecipeSuggestion, pantry: [String]) -> Double {
         guard !recipe.ingredients.isEmpty else { return 0 }
+        return Double(onHand(in: recipe, pantry: pantry).count) / Double(recipe.ingredients.count)
+    }
+
+    /// The recipe's ingredients that the pantry (plus staples) covers, spelled as in the recipe.
+    static func onHand(in recipe: RecipeSuggestion, pantry: [String]) -> Set<String> {
         let allowed = allowed(pantry)
-        let covered = recipe.ingredients.filter { isCovered($0, by: allowed) }.count
-        return Double(covered) / Double(recipe.ingredients.count)
+        return Set(recipe.ingredients.filter { isCovered($0, by: allowed) })
     }
 
     private static func allowed(_ pantry: [String]) -> Set<String> {

@@ -55,6 +55,9 @@ final class SuggestViewModel {
         do {
             recipes = try await generator.recipes(from: names, maxMinutes: limit)
                 .filter { Self.isUsable($0, pantry: names, maxMinutes: limit) }
+            // Top up with recipe-book matches so there are always plenty of options to pick from.
+            let shown = Set(recipes.map(\.title))
+            recipes += FallbackRecipes.best(for: names, maxMinutes: limit).filter { !shown.contains($0.title) }
             if recipes.isEmpty {
                 useFallback(pantry: names, maxMinutes: limit,
                             reason: "Couldn't find recipes that fit. Try again or allow more time.")

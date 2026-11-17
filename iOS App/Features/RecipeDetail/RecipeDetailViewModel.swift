@@ -15,6 +15,9 @@ final class RecipeDetailViewModel {
         self.recipe = recipe
         self.context = context
         isSaved = savedCopy() != nil
+        // Start with what's already in the pantry ticked, so only the missing ones need attention.
+        let pantry = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
+        checked = PantryCheck.onHand(in: recipe, pantry: pantry)
     }
 
     func toggleSave() {
