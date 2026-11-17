@@ -8,8 +8,8 @@ struct SavedView: View {
         NavigationStack {
             ScrollView {
                 if !viewModel.recipes.isEmpty {
-                    VStack(alignment: .leading, spacing: 20) {
-                        SectionHeader(title: "Your favorites", subtitle: "Press and hold a recipe to remove it")
+                    VStack(alignment: .leading, spacing: Spacing.section) {
+                        PageTitle(title: "Saved", subtitle: "Press and hold a recipe to remove it")
                         ForEach(viewModel.recipes) { saved in
                             NavigationLink {
                                 RecipeDetailView(viewModel: viewModel.detailViewModel(for: saved))
@@ -25,7 +25,9 @@ struct SavedView: View {
                             }
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, Spacing.page)
+                    .padding(.top, 8)
+                    .padding(.bottom, Spacing.section)
                 }
             }
             .overlay {
@@ -42,7 +44,9 @@ struct SavedView: View {
                 }
             }
             .navigationTitle("Saved")
-            .toolbarTitleDisplayMode(.inlineLarge)
+            #if os(iOS)
+            .toolbarVisibility(.hidden, for: .navigationBar)
+            #endif
             .onAppear(perform: viewModel.load)
         }
     }
