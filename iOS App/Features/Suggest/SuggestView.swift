@@ -60,7 +60,7 @@ struct SuggestView: View {
             } label: {
                 HStack(spacing: 8) {
                     if viewModel.isGenerating {
-                        ProgressView().tint(.black)
+                        ProgressView().tint(.white)
                         Text("Finding recipes…")
                     } else {
                         Text("Find recipes")
@@ -68,10 +68,11 @@ struct SuggestView: View {
                     }
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
-                .background(Color(red: 0.36, green: 0.84, blue: 0.53), in: .capsule)
+                .background(Color.brand, in: .capsule)
+                .environment(\.colorScheme, .light)  // the darker brand green, so white text stays readable
             }
             .buttonStyle(.plain)
             .disabled(!viewModel.canGenerate)
@@ -91,7 +92,7 @@ struct SuggestView: View {
                     }
             }
         }
-        .background(Color(red: 0.09, green: 0.15, blue: 0.14))
+        .background(Color.brand.environment(\.colorScheme, .light))
         .clipShape(.rect(cornerRadius: 16))
     }
 

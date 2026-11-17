@@ -5,34 +5,33 @@ import UIKit
 import AppKit
 #endif
 
-/// Picks a dish photo for a recipe from keywords in its title, then its ingredients.
+/// Picks a dish photo for a recipe only when the photo really shows that dish; otherwise none.
 enum RecipeArt {
-    /// Checked in order; the first keyword found in the title (then the ingredients) wins.
-    private static let keywords: [(words: [String], photo: String)] = [
-        (["pancake", "waffle"], "dish-pancakes"),
-        (["omelette", "omelet", "scrambled", "frittata", "egg"], "dish-eggs"),
-        (["pasta", "spaghetti", "penne", "macaroni", "mac and cheese", "noodle"], "dish-pasta"),
-        (["salad"], "dish-salad"),
-        (["soup", "stew"], "dish-soup"),
-        (["curry"], "dish-curry"),
-        (["taco", "quesadilla", "burrito", "tortilla"], "dish-tacos"),
-        (["fried rice", "rice", "bowl"], "dish-rice-bowl"),
-        (["toast", "sandwich", "melt", "grilled cheese", "bread"], "dish-sandwich"),
-        (["salmon", "tilapia", "fish", "tuna"], "dish-salmon"),
-        (["shrimp"], "dish-shrimp"),
-        (["chicken"], "dish-chicken"),
-        (["beef", "steak", "burger"], "dish-steak"),
-        (["potato", "fries"], "dish-potatoes"),
-        (["yogurt", "parfait", "granola", "oat", "banana"], "dish-oatmeal"),
+    /// Title phrases each photo truly depicts. Narrow on purpose: no photo beats the wrong one
+    /// (the omelette photo must not stand in for scrambled eggs).
+    private static let matches: [(phrases: [String], photo: String)] = [
+        (["pancake"], "dish-pancakes"),
+        (["omelette", "omelet", "frittata"], "dish-eggs"),
+        (["spaghetti", "marinara", "tomato pasta", "pasta pomodoro"], "dish-pasta"),
+        (["greek salad", "garden salad", "green salad"], "dish-salad"),
+        (["vegetable soup", "veggie soup", "minestrone"], "dish-soup"),
+        (["chicken curry"], "dish-curry"),
+        (["taco"], "dish-tacos"),
+        (["fried rice"], "dish-rice-bowl"),
+        (["grilled cheese"], "dish-sandwich"),
+        (["salmon"], "dish-salmon"),
+        (["garlic shrimp", "shrimp scampi", "butter shrimp"], "dish-shrimp"),
+        (["roast chicken", "roasted chicken", "lemon garlic chicken", "chicken thigh"], "dish-chicken"),
+        (["steak"], "dish-steak"),
+        (["roasted potato", "roast potato"], "dish-potatoes"),
+        (["oatmeal", "porridge", "overnight oats"], "dish-oatmeal"),
     ]
 
-    static func photo(title: String, ingredients: [String]) -> String {
-        for text in [title.lowercased(), ingredients.joined(separator: " ").lowercased()] {
-            if let match = keywords.first(where: { $0.words.contains(where: text.contains) }) {
-                return match.photo
-            }
-        }
-        return "dish-default"
+    /// The matching photo's asset name, or nil when no photo shows this dish (or it hasn't been added).
+    static func photo(title: String) -> String? {
+        let title = title.lowercased()
+        guard let match = matches.first(where: { $0.phrases.contains(where: title.contains) }) else { return nil }
+        return FoodPhoto.exists(match.photo) ? match.photo : nil
     }
 }
 

@@ -32,4 +32,8 @@ final class SavedViewModel {
         )
         return RecipeDetailViewModel(recipe: recipe, context: context)
     }
+
+    func detailViewModel(for recipe: RecipeSuggestion) -> RecipeDetailViewModel {
+        RecipeDetailViewModel(recipe: recipe, context: context)
+    }
 }

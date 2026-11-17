@@ -84,7 +84,7 @@ struct PantryView: View {
                             .accessibilityHidden(true)
                         Text("pantry")
                             .font(.title2.weight(.heavy))
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(Color.brand)
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
