@@ -168,7 +168,7 @@ struct RecipeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            FoodPhoto(name: RecipeArt.photo(title: title, ingredients: ingredients), fallback: "dish-default")
+            FoodPhoto(name: RecipeArt.photo(title: title, ingredients: ingredients), fallbacks: ["dish-default"])
                 .frame(height: 190)
                 .clipShape(.rect(cornerRadius: 12))
                 .overlay(alignment: .topLeading) {

@@ -45,7 +45,7 @@ struct PantryView: View {
                     Section {
                         ForEach(section.items) { item in
                             HStack(spacing: 14) {
-                                Thumbnail(photo: item.category.photo)
+                                Thumbnail(photo: .ingredient(item.name, category: item.category))
                                 Text(item.name)
                                     .font(.body.weight(.medium))
                                 Spacer()

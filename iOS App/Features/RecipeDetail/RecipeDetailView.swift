@@ -13,7 +13,7 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 FoodPhoto(name: RecipeArt.photo(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients),
-                          fallback: "dish-default")
+                          fallbacks: ["dish-default"])
                     .frame(height: 300)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
@@ -67,7 +67,7 @@ struct RecipeDetailView: View {
                     viewModel.toggle(ingredient)
                 } label: {
                     HStack(spacing: 14) {
-                        Thumbnail(photo: viewModel.category(of: ingredient).photo)
+                        Thumbnail(photo: .ingredient(ingredient, category: viewModel.category(of: ingredient)))
                         Text(ingredient)
                             .font(.body.weight(.medium))
                             .strikethrough(isChecked)

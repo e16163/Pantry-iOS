@@ -14,6 +14,11 @@ struct PhotoAndArtTests {
         #expect(RecipeArt.photo(title: "Mystery Dish", ingredients: []) == "dish-default")
     }
 
+    @Test func ingredientPhotoSlugMatchesSlicerScript() {
+        #expect(FoodPhoto.slug("Jalapeño") == "jalapeno")
+        #expect(FoodPhoto.slug("apple cider vinegar") == "apple-cider-vinegar")
+    }
+
     @MainActor @Test func savedDeleteRemovesRecipe() throws {
         let container = try ModelContainer(for: PantryItem.self, SavedRecipe.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))

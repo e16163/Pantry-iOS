@@ -48,7 +48,7 @@ struct DetectionReviewSheet: View {
                     if isOn { viewModel.selectedDetected.remove(name) } else { viewModel.selectedDetected.insert(name) }
                 } label: {
                     HStack(spacing: 14) {
-                        Thumbnail(photo: (IngredientCatalog.all.first { $0.name == name }?.category ?? .other).photo, size: 44)
+                        Thumbnail(photo: .ingredient(name, category: IngredientCatalog.all.first { $0.name == name }?.category ?? .other), size: 44)
                         Text(name)
                             .font(.body.weight(.medium))
                         Spacer()

@@ -36,16 +36,16 @@ enum RecipeArt {
     }
 }
 
-/// A photo from the asset catalog filling its frame, falling back to `fallback` (another asset) and then a
-/// gray tile, so the app still looks finished before every photo has been added.
+/// A photo from the asset catalog filling its frame, falling back to the first of `fallbacks` that exists and
+/// then a gray tile, so the app still looks finished before every photo has been added.
 struct FoodPhoto: View {
     let name: String
-    var fallback: String? = nil
+    var fallbacks: [String] = []
 
     var body: some View {
         Color.secondary.opacity(0.12)
             .overlay {
-                if let found = [name, fallback].compactMap({ $0 }).first(where: Self.exists) {
+                if let found = ([name] + fallbacks).first(where: Self.exists) {
                     Image(found).resizable().scaledToFill()
                 } else {
                     Image(systemName: "fork.knife")
@@ -66,9 +66,18 @@ struct FoodPhoto: View {
     }
 }
 
-extension IngredientCategory {
-    /// Photo for ingredient rows in this category; the older flat illustration stands in until it's added.
-    var photo: FoodPhoto {
-        FoodPhoto(name: "photo-category-\(rawValue)", fallback: "category-\(rawValue)")
+extension FoodPhoto {
+    /// The ingredient's own photo, else its category photo, else the category's flat illustration.
+    static func ingredient(_ name: String, category: IngredientCategory) -> FoodPhoto {
+        FoodPhoto(name: "ingredient-\(slug(name))",
+                  fallbacks: ["photo-category-\(category.rawValue)", "category-\(category.rawValue)"])
+    }
+
+    /// "jalapeño pepper" → "jalapeno-pepper"; must match tools/slice-ingredient-sheets.py.
+    static func slug(_ name: String) -> String {
+        name.lowercased()
+            .folding(options: .diacriticInsensitive, locale: nil)
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+            .joined(separator: "-")
     }
 }
