@@ -38,6 +38,10 @@ final class RecipeDetailViewModel {
         }
     }
 
+    func cookViewModel() -> CookViewModel {
+        CookViewModel(title: recipe.title, steps: recipe.steps)
+    }
+
     private func savedCopy() -> SavedRecipe? {
         let title = recipe.title
         let descriptor = FetchDescriptor<SavedRecipe>(predicate: #Predicate { $0.title == title })
