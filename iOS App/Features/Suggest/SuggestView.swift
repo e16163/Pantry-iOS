@@ -46,7 +46,6 @@ struct SuggestView: View {
     /// Dark promo-style banner holding the main action.
     private var hero: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Spacer(minLength: 40)
             Text("Dinner from what\nyou've got.")
                 .font(.system(size: 28, weight: .heavy))
                 .tracking(-0.5)
@@ -55,6 +54,7 @@ struct SuggestView: View {
                  : "Pick a time and we'll find recipes that use your pantry.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.85))
+                .padding(.trailing, 90)  // keep clear of the bowl art
             Button {
                 Task { await viewModel.generate() }
             } label: {
@@ -82,8 +82,19 @@ struct SuggestView: View {
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .frame(minHeight: 260)
-        .background(Color(red: 0.09, green: 0.15, blue: 0.14))  // near-black Pantry green
+        .background(alignment: .bottomTrailing) {
+            ZStack(alignment: .bottomTrailing) {
+                Color(red: 0.09, green: 0.15, blue: 0.14)  // near-black Pantry green
+                Image(.cookingDone)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 130, height: 130)
+                    .clipShape(.rect(cornerRadius: 28))
+                    .rotationEffect(.degrees(-12))
+                    .offset(x: 26, y: 26)
+                    .accessibilityHidden(true)
+            }
+        }
         .clipShape(.rect(cornerRadius: 16))
     }
 
