@@ -61,7 +61,7 @@ iOS App/
 
 | # | Decision | Status |
 |---|---|---|
-| 1 | Demo is ~Nov 23; feature freeze Fri Nov 21 | ✅ |
+| 1 | Demo moved up to Mon Nov 17, 6 pm; photo input (L4) cut for the demo | ✅ |
 | 2 | Demo device: e16163's Apple Intelligence iPhone | ✅ |
 | 3 | No fixed roles: pull-based Kanban | ✅ |
 | 4 | Minimum iOS 26.0 | ✅ Done |
@@ -93,7 +93,9 @@ Mentor feedback (Nov 9): prioritize manual entry and recipe recommendations; fri
 | Running out of time | Layers: every layer ships a working app, so we cut from the top |
 
 ## Demo script (2 min)
-1. Add ingredients (photo with one fix on the review sheet, or typed if photo was cut).
-2. Set the filter to ≤30 min and generate.
-3. Open a recipe, save it, start cook mode.
+1. Pantry tab: type one or two ingredients to show autocomplete, then tap **Try a sample pantry** (on a fresh install) or add the rest by hand.
+2. Suggest tab: set the filter to ≤30 min and tap **Generate recipes** (~8 s; talk over the wait). If the model fails, recipes come from the bundled recipe book.
+3. Open a recipe, tick off an ingredient, save it, then tap **Start cooking** and swipe through the steps.
 4. Show the Saved tab.
+
+Before the demo: delete and reinstall the app on the demo iPhone so the pantry is empty, and check Apple Intelligence is on. Backup: the recorded video (#88).
