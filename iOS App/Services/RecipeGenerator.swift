@@ -77,8 +77,11 @@ struct RecipeGenerator {
         return genericMessage
     }
 
-    func recipes(from ingredients: [String], maxMinutes: Int? = nil) async throws -> [RecipeSuggestion] {
+    func recipes(from ingredients: [String], maxMinutes: Int? = nil,
+                  excluding: [String] = []) async throws -> [RecipeSuggestion] {
         let timeRule = maxMinutes.map { " Each recipe must take at most \($0) minutes in total." } ?? ""
+        // Last 30 titles only, to keep the prompt well inside the model's context window.
+        let repeatRule = excluding.isEmpty ? "" : " Don't suggest these again: \(excluding.suffix(30).joined(separator: "; "))."
         let session = LanguageModelSession(instructions: """
             You are a home cook writing recipes for a cookbook. Use only the ingredients the user lists, \
             plus basic staples: salt, pepper, oil, and water. Never add other ingredients. \
@@ -91,7 +94,7 @@ struct RecipeGenerator {
             how many minutes, and what it should look, smell or feel like when it's done.
             """)
         let response = try await session.respond(
-            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 5 different recipes.\(timeRule)",
+            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 5 different recipes.\(timeRule)\(repeatRule)",
             generating: RecipeList.self
         )
         return response.content.recipes

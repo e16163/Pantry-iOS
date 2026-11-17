@@ -140,6 +140,28 @@ struct SuggestView: View {
                 .buttonStyle(.plain)
                 .padding(.bottom, 12)
             }
+            if viewModel.hasMore {
+                Button {
+                    Task { await viewModel.loadMore() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if viewModel.isLoadingMore {
+                            ProgressView()
+                            Text("Cooking up more…")
+                        } else {
+                            Image(systemName: "sparkles")
+                            Text("More recipes")
+                        }
+                    }
+                }
+                .buttonStyle(.primary)
+                .disabled(viewModel.isLoadingMore)
+            } else {
+                Text("That's every recipe that fits your pantry right now.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+            }
         }
     }
 }

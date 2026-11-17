@@ -15,6 +15,8 @@ struct PhotoAndArtTests {
         #expect(RecipeArt.photo(title: "Classic Scrambled Eggs on Toast") == nil)
         #expect(RecipeArt.photo(title: "Pesto Pasta") == nil)
         #expect(RecipeArt.photo(title: "Mystery Dish") == nil)
+        #expect(RecipeArt.photo(title: "Egg Curry") == nil)
+        #expect(RecipeArt.photo(title: "Shrimp Fajitas") == nil)
     }
 
     @Test func ingredientPhotoSlugMatchesSlicerScript() {
