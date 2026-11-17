@@ -55,6 +55,14 @@ struct SuggestView: View {
                             RecipeRow(title: recipe.title, minutes: recipe.minutes, difficulty: recipe.difficulty)
                         }
                     }
+                } header: {
+                    if viewModel.fallbackNotice != nil {
+                        Text("From the recipe book")
+                    }
+                } footer: {
+                    if let notice = viewModel.fallbackNotice {
+                        Text(notice)
+                    }
                 }
             }
             .navigationTitle("Suggest")

@@ -10,6 +10,8 @@ final class SuggestViewModel {
     private(set) var recipes: [RecipeSuggestion] = []
     private(set) var isGenerating = false
     private(set) var errorMessage: String?
+    /// Why the shown recipes came from the bundled recipe book instead of the model; nil for model recipes.
+    private(set) var fallbackNotice: String?
     private(set) var pantryCount = 0
     /// Longest total time a recipe may take, in minutes; nil means any.
     var maxMinutes: Int?
@@ -32,23 +34,35 @@ final class SuggestViewModel {
 
     func generate() async {
         errorMessage = nil
-        if let message = generator.unavailableMessage {
-            errorMessage = message
-            return
-        }
+        fallbackNotice = nil
         let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
         guard !names.isEmpty else { return }
+        let limit = maxMinutes
+        if let message = generator.unavailableMessage {
+            useFallback(pantry: names, maxMinutes: limit, reason: message)
+            return
+        }
         isGenerating = true
         defer { isGenerating = false }
         do {
-            let limit = maxMinutes
             recipes = try await generator.recipes(from: names, maxMinutes: limit)
                 .filter { Self.isUsable($0, pantry: names, maxMinutes: limit) }
             if recipes.isEmpty {
-                errorMessage = "Couldn't find recipes that fit. Try again or allow more time."
+                useFallback(pantry: names, maxMinutes: limit,
+                            reason: "Couldn't find recipes that fit. Try again or allow more time.")
             }
         } catch {
-            errorMessage = RecipeGenerator.message(for: error)
+            useFallback(pantry: names, maxMinutes: limit, reason: RecipeGenerator.message(for: error))
+        }
+    }
+
+    /// Shows bundled recipes instead, keeping `reason` visible; shows only the error if none fit.
+    private func useFallback(pantry: [String], maxMinutes: Int?, reason: String) {
+        recipes = FallbackRecipes.best(for: pantry, maxMinutes: maxMinutes)
+        if recipes.isEmpty {
+            errorMessage = reason
+        } else {
+            fallbackNotice = reason
         }
     }
 
