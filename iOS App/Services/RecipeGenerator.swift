@@ -10,6 +10,8 @@ struct RecipeSuggestion {
     var difficulty: String
     @Guide(description: "Ingredients used, each a short lowercase name")
     var ingredients: [String]
+    @Guide(description: "How much of each ingredient, in the same order as ingredients, like \"2 cups\", \"1 tbsp\" or \"3\"")
+    var amounts: [String] = []
     @Guide(description: "Cooking steps in order, one short sentence each")
     var steps: [String]
 }
@@ -21,6 +23,15 @@ private struct RecipeList {
 }
 
 /// Generates recipes from pantry ingredients with Apple's on-device model.
+extension RecipeSuggestion {
+    /// "1 cup" for spinach, or nil when the recipe didn't say.
+    func amount(for ingredient: String) -> String? {
+        guard let index = ingredients.firstIndex(of: ingredient), amounts.indices.contains(index),
+              !amounts[index].isEmpty else { return nil }
+        return amounts[index]
+    }
+}
+
 struct RecipeGenerator {
     var unavailableMessage: String? {
         Self.message(for: SystemLanguageModel.default.availability)
@@ -71,7 +82,8 @@ struct RecipeGenerator {
         let session = LanguageModelSession(instructions: """
             You suggest simple home recipes. Use only the ingredients the user lists, \
             plus basic staples: salt, pepper, oil, and water. Never add other ingredients. \
-            Name each ingredient exactly as it appears in the user's list.
+            Name each ingredient exactly as it appears in the user's list. \
+            Give an amount for every ingredient, for 2 servings.
             """)
         let response = try await session.respond(
             to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 3 different recipes.\(timeRule)",

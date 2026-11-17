@@ -26,6 +26,7 @@ final class RecipeDetailViewModel {
                 minutes: recipe.minutes,
                 difficulty: recipe.difficulty,
                 ingredients: recipe.ingredients,
+                amounts: recipe.amounts,
                 steps: recipe.steps
             ))
         }

@@ -22,12 +22,25 @@ final class SavedViewModel {
         load()
     }
 
+    /// Recipe-book dishes with a matching photo that aren't saved yet, so the tab always has something to browse.
+    var picks: [RecipeSuggestion] {
+        let saved = Set(recipes.map(\.title))
+        return Array(FallbackRecipes.all
+            .filter { RecipeArt.photo(title: $0.title) != nil && !saved.contains($0.title) }
+            .prefix(6))
+    }
+
+    func detailViewModel(for recipe: RecipeSuggestion) -> RecipeDetailViewModel {
+        RecipeDetailViewModel(recipe: recipe, context: context)
+    }
+
     func detailViewModel(for saved: SavedRecipe) -> RecipeDetailViewModel {
         let recipe = RecipeSuggestion(
             title: saved.title,
             minutes: saved.minutes,
             difficulty: saved.difficulty,
             ingredients: saved.ingredients,
+            amounts: saved.amounts,
             steps: saved.steps
         )
         return RecipeDetailViewModel(recipe: recipe, context: context)

@@ -2,7 +2,7 @@
 
 Paste each prompt into ChatGPT image generation. Save each image with the **exact file name** shown, as PNG or JPG, in a single folder. Then either drag each one into the matching empty slot in `iOS App/Assets.xcassets/Photos`, or hand the folder to Claude to add them.
 
-Until a photo is added, the app shows the old illustration (categories) or a gray tile (dishes), so you can add them in any order.
+Until a photo is added, the app shows the old illustration (categories) and recipes without a matching dish photo show no photo, so you can add them in any order. A dish photo is only used for recipe titles that name that exact dish (see `RecipeArt` in `RecipeArt.swift`).
 
 Start every prompt with this style line so the set looks consistent:
 
@@ -12,8 +12,6 @@ Start every prompt with this style line so the set looks consistent:
 
 | File name | Size | Prompt (after the style line) |
 |---|---|---|
-| `hero-suggest` | 3:2 landscape | A rustic cast-iron skillet of colorful roasted vegetables and eggs on a dark slate counter, moody darker lighting, the dish placed on the right third of the frame, empty dark space on the left for white headline text. |
-| `dish-default` | 3:2 landscape | A beautifully plated home-cooked dinner in a white ceramic bowl, seen from 45 degrees, centered with breathing room around it. |
 | `dish-eggs` | 3:2 landscape | A fluffy folded omelette with spinach and cherry tomatoes on a white plate, 45-degree angle. |
 | `dish-pasta` | 3:2 landscape | A bowl of spaghetti in tomato sauce with basil and grated parmesan, 45-degree angle. |
 | `dish-sandwich` | 3:2 landscape | A golden grilled cheese sandwich cut diagonally, melted cheese pulling, on a wooden board. |

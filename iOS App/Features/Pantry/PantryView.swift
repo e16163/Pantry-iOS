@@ -5,6 +5,7 @@ import SwiftUI
 struct PantryView: View {
     @Bindable var viewModel: PantryViewModel
     @FocusState private var isFieldFocused: Bool
+    @Environment(\.scenePhase) private var scenePhase
     @State private var photoItem: PhotosPickerItem?
     @State private var isPickingPhoto = false
     @State private var isTakingPhoto = false
@@ -73,6 +74,9 @@ struct PantryView: View {
             }
             .listStyle(.plain)
             .sensoryFeedback(.impact(weight: .light), trigger: viewModel.items.count)
+            .onChange(of: scenePhase) {
+                if scenePhase == .active { viewModel.load() }  // picks up items added with Siri
+            }
             .navigationTitle("Pantry")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {

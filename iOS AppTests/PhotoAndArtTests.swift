@@ -8,10 +8,13 @@ struct PhotoAndArtTests {
         #expect(names == ["egg", "tomato"])
     }
 
-    @Test func recipeArtMatchesTitleBeforeIngredients() {
-        #expect(RecipeArt.photo(title: "Tomato Pasta", ingredients: ["egg"]) == "dish-pasta")
-        #expect(RecipeArt.photo(title: "Mystery Dish", ingredients: ["chicken"]) == "dish-chicken")
-        #expect(RecipeArt.photo(title: "Mystery Dish", ingredients: []) == "dish-default")
+    @Test func recipeArtOnlyMatchesTheSameDish() {
+        #expect(RecipeArt.photo(title: "Spinach & Cheddar Omelette") == "dish-eggs")
+        #expect(RecipeArt.photo(title: "Tomato Basil Spaghetti") == "dish-pasta")
+        // A look-alike photo would be wrong, so these get none.
+        #expect(RecipeArt.photo(title: "Classic Scrambled Eggs on Toast") == nil)
+        #expect(RecipeArt.photo(title: "Pesto Pasta") == nil)
+        #expect(RecipeArt.photo(title: "Mystery Dish") == nil)
     }
 
     @Test func ingredientPhotoSlugMatchesSlicerScript() {

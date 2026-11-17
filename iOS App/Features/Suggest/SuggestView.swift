@@ -43,10 +43,9 @@ struct SuggestView: View {
         }
     }
 
-    /// Photo promo banner holding the main action.
+    /// Dark promo-style banner holding the main action.
     private var hero: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Spacer(minLength: 40)
             Text("Dinner from what\nyou've got.")
                 .font(.system(size: 28, weight: .heavy))
                 .tracking(-0.5)
@@ -55,12 +54,13 @@ struct SuggestView: View {
                  : "Pick a time and we'll find recipes that use your pantry.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.85))
+                .padding(.trailing, 90)  // keep clear of the bowl art
             Button {
                 Task { await viewModel.generate() }
             } label: {
                 HStack(spacing: 8) {
                     if viewModel.isGenerating {
-                        ProgressView().tint(.black)
+                        ProgressView().tint(.white)
                         Text("Finding recipes…")
                     } else {
                         Text("Find recipes")
@@ -68,10 +68,11 @@ struct SuggestView: View {
                     }
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
-                .background(Color(red: 0.36, green: 0.84, blue: 0.53), in: .capsule)
+                .background(Color.brand, in: .capsule)
+                .environment(\.colorScheme, .light)  // keep the brand green dark enough for white text
             }
             .buttonStyle(.plain)
             .disabled(!viewModel.canGenerate)
@@ -81,17 +82,19 @@ struct SuggestView: View {
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
-        .frame(minHeight: 260)
-        .background {
-            if FoodPhoto.exists("hero-suggest") {
-                FoodPhoto(name: "hero-suggest")
-                    .overlay {
-                    // Darkens the bottom so white text reads on any photo.
-                        LinearGradient(colors: [.black.opacity(0.1), .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
-                    }
+        .background(alignment: .bottomTrailing) {
+            ZStack(alignment: .bottomTrailing) {
+                Color(red: 0.09, green: 0.15, blue: 0.14)  // near-black Pantry green
+                Image(.cookingDone)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 130, height: 130)
+                    .clipShape(.rect(cornerRadius: 28))
+                    .rotationEffect(.degrees(-12))
+                    .offset(x: 26, y: 26)
+                    .accessibilityHidden(true)
             }
         }
-        .background(Color(red: 0.09, green: 0.15, blue: 0.14))
         .clipShape(.rect(cornerRadius: 16))
     }
 
