@@ -81,14 +81,6 @@ struct SuggestView: View {
                             Text(notice)
                         }
                     }
-                } header: {
-                    if viewModel.fallbackNotice != nil {
-                        Text("From the recipe book")
-                    }
-                } footer: {
-                    if let notice = viewModel.fallbackNotice {
-                        Text(notice)
-                    }
                 }
             }
             .navigationTitle("Suggest")
