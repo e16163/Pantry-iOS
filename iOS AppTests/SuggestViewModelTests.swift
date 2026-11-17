@@ -39,6 +39,12 @@ struct SuggestViewModelTests {
         #expect(!suggest.canGenerate)
     }
 
+    @Test func onHandCountsPantryItemsAndStaples() {
+        pantry.add(suggestion: "egg")
+        suggest.refreshPantry()
+        #expect(suggest.onHandCount(for: recipe(minutes: 10, ingredients: ["egg", "salt", "bacon"])) == 2)
+    }
+
     @Test func canGenerateAfterAddingIngredients() {
         pantry.add(suggestion: "egg")
         suggest.refreshPantry()

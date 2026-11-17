@@ -12,11 +12,24 @@ struct RecipeDetailView: View {
     var body: some View {
         List {
             Section {
-                Text("\(viewModel.recipe.minutes) min · \(viewModel.recipe.difficulty)")
-                Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
-                    .disabled(viewModel.recipe.steps.isEmpty)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(viewModel.recipe.title)
+                        .font(.largeTitle.bold())
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        StatTile(systemImage: "clock", value: "\(viewModel.recipe.minutes)", caption: "min")
+                        StatTile(systemImage: "chart.bar", value: viewModel.recipe.difficulty, caption: "level")
+                        StatTile(systemImage: "basket", value: "\(viewModel.recipe.ingredients.count)",
+                                 caption: "ingredients")
+                        StatTile(systemImage: "list.number", value: "\(viewModel.recipe.steps.count)", caption: "steps")
+                    }
+                    Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
+                        .buttonStyle(.primary)
+                        .disabled(viewModel.recipe.steps.isEmpty)
+                }
+                .padding(.vertical, 6)
             }
-            Section("Ingredients") {
+            Section {
                 ForEach(viewModel.recipe.ingredients, id: \.self) { ingredient in
                     let isChecked = viewModel.checked.contains(ingredient)
                     Button {
@@ -36,6 +49,10 @@ struct RecipeDetailView: View {
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(isChecked ? .isSelected : [])
                 }
+            } header: {
+                Text("Ingredients")
+            } footer: {
+                Text("Tap to tick off what you've got out.")
             }
             Section("Steps") {
                 ForEach(Array(viewModel.recipe.steps.enumerated()), id: \.offset) { index, step in
@@ -49,7 +66,8 @@ struct RecipeDetailView: View {
                 }
             }
         }
-        .navigationTitle(viewModel.recipe.title)
+        .toolbarTitleDisplayMode(.inline)  // the title is in the header, so the bar stays empty
+        .contentMargins(.top, 4, for: .scrollContent)
         .toolbar {
             Button(viewModel.isSaved ? "Saved" : "Save",
                    systemImage: viewModel.isSaved ? "bookmark.fill" : "bookmark",

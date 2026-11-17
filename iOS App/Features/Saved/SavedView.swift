@@ -11,7 +11,8 @@ struct SavedView: View {
                     NavigationLink {
                         RecipeDetailView(viewModel: viewModel.detailViewModel(for: saved))
                     } label: {
-                        RecipeRow(title: saved.title, minutes: saved.minutes, difficulty: saved.difficulty)
+                        RecipeRow(title: saved.title, minutes: saved.minutes, difficulty: saved.difficulty,
+                                  ingredientCount: saved.ingredients.count)
                     }
                 }
                 .onDelete(perform: viewModel.delete)
@@ -30,6 +31,8 @@ struct SavedView: View {
                 }
             }
             .navigationTitle("Saved")
+            .toolbarTitleDisplayMode(.inlineLarge)
+            .contentMargins(.top, 4, for: .scrollContent)
             .onAppear(perform: viewModel.load)
         }
     }

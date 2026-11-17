@@ -29,7 +29,15 @@ final class SuggestViewModel {
 
     /// Call when the screen appears, since the pantry is edited on another tab.
     func refreshPantry() {
-        pantryCount = (try? context.fetchCount(FetchDescriptor<PantryItem>())) ?? 0
+        pantryNames = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
+        pantryCount = pantryNames.count
+    }
+
+    private var pantryNames: [String] = []
+
+    /// How many of the recipe's ingredients are already in the pantry (staples count as on hand).
+    func onHandCount(for recipe: RecipeSuggestion) -> Int {
+        Int((PantryCheck.coverage(of: recipe, pantry: pantryNames) * Double(recipe.ingredients.count)).rounded())
     }
 
     func generate() async {
