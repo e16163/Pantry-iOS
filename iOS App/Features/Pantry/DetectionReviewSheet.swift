@@ -48,11 +48,7 @@ struct DetectionReviewSheet: View {
                     if isOn { viewModel.selectedDetected.remove(name) } else { viewModel.selectedDetected.insert(name) }
                 } label: {
                     HStack(spacing: 14) {
-                        Text(IngredientEmoji.emoji(for: name, category: IngredientCatalog.all.first { $0.name == name }?.category ?? .other))
-                            .font(.title3)
-                            .frame(width: 40, height: 40)
-                            .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 8))
-                            .accessibilityHidden(true)
+                        Thumbnail(photo: (IngredientCatalog.all.first { $0.name == name }?.category ?? .other).photo, size: 44)
                         Text(name)
                             .font(.body.weight(.medium))
                         Spacer()

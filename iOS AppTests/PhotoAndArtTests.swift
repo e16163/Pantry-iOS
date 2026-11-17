@@ -9,20 +9,9 @@ struct PhotoAndArtTests {
     }
 
     @Test func recipeArtMatchesTitleBeforeIngredients() {
-        #expect(RecipeArt.emoji(title: "Tomato Pasta", ingredients: ["egg"]) == "🍝")
-        #expect(RecipeArt.emoji(title: "Mystery Dish", ingredients: ["chicken"]) == "🍗")
-        #expect(RecipeArt.emoji(title: "Mystery Dish", ingredients: []) == "🍽️")
-    }
-
-    @Test func recipeArtColorIsStable() {
-        #expect(RecipeArt.colorIndex(title: "Omelette") == RecipeArt.colorIndex(title: "Omelette"))
-        #expect((0..<RecipeArt.palette.count).contains(RecipeArt.colorIndex(title: "Omelette")))
-    }
-
-    @Test func ingredientEmojiPrefersLongestMatch() {
-        #expect(IngredientEmoji.emoji(for: "eggplant", category: .produce) == "🍆")
-        #expect(IngredientEmoji.emoji(for: "peanut butter", category: .pantry) == "🥜")
-        #expect(IngredientEmoji.emoji(for: "quinoa", category: .grains) == "🌾")
+        #expect(RecipeArt.photo(title: "Tomato Pasta", ingredients: ["egg"]) == "dish-pasta")
+        #expect(RecipeArt.photo(title: "Mystery Dish", ingredients: ["chicken"]) == "dish-chicken")
+        #expect(RecipeArt.photo(title: "Mystery Dish", ingredients: []) == "dish-default")
     }
 
     @MainActor @Test func savedDeleteRemovesRecipe() throws {

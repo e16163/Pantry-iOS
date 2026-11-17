@@ -12,22 +12,27 @@ struct RecipeDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                RecipeArtTile(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients, emojiSize: 110)
-                    .frame(height: 260)
+                FoodPhoto(name: RecipeArt.photo(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients),
+                          fallback: "dish-default")
+                    .frame(height: 300)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
-                        .font(.title.bold())
+                        .font(.system(size: 30, weight: .heavy))
+                        .tracking(-0.5)
                         .fixedSize(horizontal: false, vertical: true)
                     RecipeMeta(minutes: viewModel.recipe.minutes, difficulty: viewModel.recipe.difficulty,
                                ingredientCount: viewModel.recipe.ingredients.count)
                 }
-                .padding()
+                .padding(Spacing.page)
+                .padding(.top, 4)
                 SectionDivider()
                 ingredients
-                    .padding()
+                    .padding(Spacing.page)
+                    .padding(.vertical, 8)
                 SectionDivider()
                 steps
-                    .padding()
+                    .padding(Spacing.page)
+                    .padding(.vertical, 8)
             }
         }
         .ignoresSafeArea(edges: .top)
@@ -35,7 +40,7 @@ struct RecipeDetailView: View {
             Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
                 .buttonStyle(.primary)
                 .disabled(viewModel.recipe.steps.isEmpty)
-                .padding(.horizontal)
+                .padding(.horizontal, Spacing.page)
                 .padding(.vertical, 10)
                 .background(.bar)
         }
@@ -62,10 +67,7 @@ struct RecipeDetailView: View {
                     viewModel.toggle(ingredient)
                 } label: {
                     HStack(spacing: 14) {
-                        Text(IngredientEmoji.emoji(for: ingredient, category: viewModel.category(of: ingredient)))
-                            .font(.title2)
-                            .frame(width: 52, height: 52)
-                            .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 8))
+                        Thumbnail(photo: viewModel.category(of: ingredient).photo)
                         Text(ingredient)
                             .font(.body.weight(.medium))
                             .strikethrough(isChecked)
