@@ -16,6 +16,8 @@ struct CookView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 ProgressView(viewModel.progressLabel, value: viewModel.progress)
+                    .font(.headline)
+                    .tint(.primary)
                 pages
                 HStack {
                     Button("Back", systemImage: "chevron.left") {
@@ -25,12 +27,14 @@ struct CookView: View {
                     Spacer()
                     if viewModel.isDone {
                         Button("Finish", systemImage: "checkmark") { dismiss() }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.primary)
+                            .frame(maxWidth: 160)
                     } else {
                         Button("Next", systemImage: "chevron.right") {
                             withAnimation { viewModel.next() }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.primary)
+                        .frame(maxWidth: 160)
                     }
                 }
                 .controlSize(.large)
@@ -38,6 +42,7 @@ struct CookView: View {
             }
             .padding()
             .navigationTitle(viewModel.title)
+            .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 Button("Close", systemImage: "xmark") { dismiss() }
             }
