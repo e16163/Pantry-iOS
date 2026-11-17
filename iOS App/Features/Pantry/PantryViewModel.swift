@@ -48,6 +48,13 @@ final class PantryViewModel {
         add()
     }
 
+    /// A pantry that reliably gives good recipes, for demos and first-time users.
+    static let sample = ["egg", "spinach", "cheddar cheese", "tomato", "bread", "butter", "pasta", "garlic"]
+
+    func addSample() {
+        Self.sample.forEach(add(suggestion:))
+    }
+
     /// Pantry items grouped by category, in `IngredientCategory` order, skipping empty categories.
     var sections: [(category: IngredientCategory, items: [PantryItem])] {
         IngredientCategory.allCases.compactMap { category in
