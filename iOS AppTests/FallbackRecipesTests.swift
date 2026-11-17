@@ -42,4 +42,13 @@ struct FallbackRecipesTests {
         #expect(best.count == 3)
         #expect(best.first?.title == "Spinach & Cheddar Omelette")
     }
+
+    @Test func everyBundledRecipeHasAnAmountPerIngredient() {
+        for recipe in FallbackRecipes.all {
+            #expect(recipe.amounts.count == recipe.ingredients.count, "\(recipe.title)")
+        }
+        let omelette = FallbackRecipes.all.first { $0.title == "Spinach & Cheddar Omelette" }
+        #expect(omelette?.amount(for: "spinach") == "1 cup")
+        #expect(omelette?.amount(for: "saffron") == nil)
+    }
 }

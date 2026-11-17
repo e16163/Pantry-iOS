@@ -14,16 +14,6 @@ struct SavedView: View {
                                 : "Press and hold a recipe to remove it")
                     if viewModel.recipes.isEmpty {
                         emptyCard
-                        SectionHeader(title: "Popular picks", subtitle: "From the Pantry recipe book")
-                        ForEach(viewModel.picks, id: \.title) { recipe in
-                            NavigationLink {
-                                RecipeDetailView(viewModel: viewModel.detailViewModel(for: recipe))
-                            } label: {
-                                RecipeCard(title: recipe.title, minutes: recipe.minutes, difficulty: recipe.difficulty,
-                                           ingredients: recipe.ingredients)
-                            }
-                            .buttonStyle(.plain)
-                        }
                     }
                     ForEach(viewModel.recipes) { saved in
                         NavigationLink {
@@ -37,6 +27,20 @@ struct SavedView: View {
                             Button("Remove from Saved", systemImage: "trash", role: .destructive) {
                                 viewModel.delete(saved)
                             }
+                        }
+                    }
+                    if !viewModel.picks.isEmpty {
+                        SectionHeader(title: viewModel.recipes.isEmpty ? "Popular picks" : "More to try",
+                                      subtitle: "From the Pantry recipe book")
+                            .padding(.top, viewModel.recipes.isEmpty ? 0 : 8)
+                        ForEach(viewModel.picks, id: \.title) { recipe in
+                            NavigationLink {
+                                RecipeDetailView(viewModel: viewModel.detailViewModel(for: recipe))
+                            } label: {
+                                RecipeCard(title: recipe.title, minutes: recipe.minutes, difficulty: recipe.difficulty,
+                                           ingredients: recipe.ingredients)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

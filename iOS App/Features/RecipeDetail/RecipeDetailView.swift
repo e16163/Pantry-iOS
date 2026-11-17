@@ -47,6 +47,7 @@ struct RecipeDetailView: View {
         }
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
+            ShareLink(item: shareText, subject: Text(viewModel.recipe.title))
             Button(viewModel.isSaved ? "Saved" : "Save",
                    systemImage: viewModel.isSaved ? "bookmark.fill" : "bookmark",
                    action: viewModel.toggleSave)
@@ -57,6 +58,16 @@ struct RecipeDetailView: View {
         #else
         .fullScreenCover(isPresented: $isCooking) { CookView(viewModel: viewModel.cookViewModel()) }
         #endif
+    }
+
+    /// The recipe as plain text for Messages, Notes, Mail and the rest of the share sheet.
+    private var shareText: String {
+        let recipe = viewModel.recipe
+        let steps = recipe.steps.enumerated().map { "\($0.offset + 1). \($0.element)" }
+        return ([recipe.title, "\(recipe.minutes) min • \(recipe.difficulty)", "",
+                 "Ingredients:"] + recipe.ingredients.map { name in
+                    "• " + (recipe.amount(for: name).map { "\($0) \(name)" } ?? name) } + ["", "Steps:"] + steps
+                + ["", "Made with Pantry"]).joined(separator: "\n")
     }
 
     private var photo: String? {
@@ -73,10 +84,17 @@ struct RecipeDetailView: View {
                 } label: {
                     HStack(spacing: 14) {
                         Thumbnail(photo: .ingredient(ingredient, category: viewModel.category(of: ingredient)))
-                        Text(ingredient)
-                            .font(.body.weight(.medium))
-                            .strikethrough(isChecked)
-                            .foregroundStyle(isChecked ? .secondary : .primary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ingredient)
+                                .font(.body.weight(.medium))
+                                .strikethrough(isChecked)
+                                .foregroundStyle(isChecked ? .secondary : .primary)
+                            if let amount = viewModel.recipe.amount(for: ingredient) {
+                                Text(amount)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                         Spacer()
                         Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                             .font(.title2)

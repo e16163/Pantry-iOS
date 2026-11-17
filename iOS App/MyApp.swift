@@ -1,12 +1,15 @@
 import SwiftData
 import SwiftUI
 
-@main struct MyApp: App {
-    let container = try! ModelContainer(for: PantryItem.self, SavedRecipe.self)
+/// The one store the app and its Siri actions share, so an ingredient added by voice shows up in the app.
+enum AppData {
+    @MainActor static let container = try! ModelContainer(for: PantryItem.self, SavedRecipe.self)
+}
 
+@main struct MyApp: App {
     var body: some Scene {
         WindowGroup {
-            RootView(context: container.mainContext)
+            RootView(context: AppData.container.mainContext)
         }
     }
 }

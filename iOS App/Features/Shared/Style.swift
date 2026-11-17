@@ -81,7 +81,8 @@ struct Chip: View {
 /// Bold section title with an optional gray subtitle.
 struct SectionHeader: View {
     let title: String
-    var subtitle: String? = nil
+    /// A key, not a String, so `^[...](inflect: true)` plurals work.
+    var subtitle: LocalizedStringKey? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
