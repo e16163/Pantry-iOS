@@ -12,9 +12,10 @@ struct RecipeDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                FoodPhoto(name: RecipeArt.photo(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients),
-                          fallbacks: ["dish-default"])
-                    .frame(height: 300)
+                if let photo {
+                    FoodPhoto(name: photo)
+                        .frame(height: 300)
+                }
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
                         .font(.system(size: 30, weight: .heavy))
@@ -35,7 +36,7 @@ struct RecipeDetailView: View {
                     .padding(.vertical, 8)
             }
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(edges: photo == nil ? [] : .top)
         .safeAreaInset(edge: .bottom) {
             Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
                 .buttonStyle(.primary)
@@ -56,6 +57,10 @@ struct RecipeDetailView: View {
         #else
         .fullScreenCover(isPresented: $isCooking) { CookView(viewModel: viewModel.cookViewModel()) }
         #endif
+    }
+
+    private var photo: String? {
+        RecipeArt.photo(title: viewModel.recipe.title)
     }
 
     private var ingredients: some View {

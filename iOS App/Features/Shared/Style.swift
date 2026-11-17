@@ -168,17 +168,14 @@ struct RecipeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            FoodPhoto(name: RecipeArt.photo(title: title, ingredients: ingredients), fallbacks: ["dish-default"])
-                .frame(height: 190)
-                .clipShape(.rect(cornerRadius: 12))
-                .overlay(alignment: .topLeading) {
-                    if let onHandCount {
-                        TagPill(text: onHandCount >= ingredients.count
-                                ? "You have everything"
-                                : "You have \(onHandCount) of \(ingredients.count)")
-                            .padding(12)
-                    }
-                }
+            if let photo = RecipeArt.photo(title: title) {
+                FoodPhoto(name: photo)
+                    .frame(height: 190)
+                    .clipShape(.rect(cornerRadius: 12))
+                    .overlay(alignment: .topLeading) { onHandTag.padding(12) }
+            } else {
+                onHandTag
+            }
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
@@ -199,6 +196,15 @@ struct RecipeCard: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var onHandTag: some View {
+        if let onHandCount {
+            TagPill(text: onHandCount >= ingredients.count
+                    ? "You have everything"
+                    : "You have \(onHandCount) of \(ingredients.count)")
+        }
     }
 }
 

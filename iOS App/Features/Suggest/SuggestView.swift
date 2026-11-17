@@ -43,7 +43,7 @@ struct SuggestView: View {
         }
     }
 
-    /// Photo promo banner holding the main action.
+    /// Dark promo-style banner holding the main action.
     private var hero: some View {
         VStack(alignment: .leading, spacing: 10) {
             Spacer(minLength: 40)
@@ -60,7 +60,7 @@ struct SuggestView: View {
             } label: {
                 HStack(spacing: 8) {
                     if viewModel.isGenerating {
-                        ProgressView().tint(.black)
+                        ProgressView().tint(.white)
                         Text("Finding recipes…")
                     } else {
                         Text("Find recipes")
@@ -68,10 +68,11 @@ struct SuggestView: View {
                     }
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
-                .background(Color(red: 0.36, green: 0.84, blue: 0.53), in: .capsule)
+                .background(Color.brand, in: .capsule)
+                .environment(\.colorScheme, .light)  // keep the brand green dark enough for white text
             }
             .buttonStyle(.plain)
             .disabled(!viewModel.canGenerate)
@@ -82,16 +83,7 @@ struct SuggestView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .frame(minHeight: 260)
-        .background {
-            if FoodPhoto.exists("hero-suggest") {
-                FoodPhoto(name: "hero-suggest")
-                    .overlay {
-                    // Darkens the bottom so white text reads on any photo.
-                        LinearGradient(colors: [.black.opacity(0.1), .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
-                    }
-            }
-        }
-        .background(Color(red: 0.09, green: 0.15, blue: 0.14))
+        .background(Color(red: 0.09, green: 0.15, blue: 0.14))  // near-black Pantry green
         .clipShape(.rect(cornerRadius: 16))
     }
 
