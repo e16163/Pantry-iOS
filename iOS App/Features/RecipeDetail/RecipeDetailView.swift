@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RecipeDetailView: View {
     @State private var viewModel: RecipeDetailViewModel
+    @State private var isCooking = false
 
     init(viewModel: RecipeDetailViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -12,6 +13,8 @@ struct RecipeDetailView: View {
         List {
             Section {
                 Text("\(viewModel.recipe.minutes) min · \(viewModel.recipe.difficulty)")
+                Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
+                    .disabled(viewModel.recipe.steps.isEmpty)
             }
             Section("Ingredients") {
                 ForEach(viewModel.recipe.ingredients, id: \.self) { ingredient in
@@ -52,6 +55,11 @@ struct RecipeDetailView: View {
                    systemImage: viewModel.isSaved ? "bookmark.fill" : "bookmark",
                    action: viewModel.toggleSave)
         }
+        #if os(macOS)
+        .sheet(isPresented: $isCooking) { CookView(viewModel: viewModel.cookViewModel()) }
+        #else
+        .fullScreenCover(isPresented: $isCooking) { CookView(viewModel: viewModel.cookViewModel()) }
+        #endif
     }
 }
 
