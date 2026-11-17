@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 import SwiftData
@@ -7,6 +8,12 @@ import SwiftData
 final class PantryViewModel {
     private(set) var items: [PantryItem] = []
     var newItemName = ""
+
+    /// Ingredients spotted in the last photo, and the ones the user kept ticked.
+    var detected: [String] = []
+    var selectedDetected: Set<String> = []
+    var isDetecting = false
+    var detectionError: String?
 
     private let context: ModelContext
 
@@ -46,6 +53,28 @@ final class PantryViewModel {
     func add(suggestion: String) {
         newItemName = suggestion
         add()
+    }
+
+    func detect(_ image: CGImage) async {
+        isDetecting = true
+        detected = []
+        selectedDetected = []
+        detectionError = nil
+        defer { isDetecting = false }
+        guard #available(iOS 27, macOS 27, visionOS 27, *) else { return }
+        do {
+            let names = try await IngredientDetector().ingredients(in: image)
+            detected = IngredientDetector.clean(names, excluding: items.map(\.name))
+            selectedDetected = Set(detected)
+        } catch {
+            detectionError = "Try another photo, or type your ingredients."
+        }
+    }
+
+    func addDetected() {
+        detected.filter(selectedDetected.contains).forEach(add(suggestion:))
+        detected = []
+        selectedDetected = []
     }
 
     /// A pantry that reliably gives good recipes, for demos and first-time users.
