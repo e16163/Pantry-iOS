@@ -17,4 +17,18 @@ extension IngredientCategory {
         case .other: "ellipsis.circle"
         }
     }
+
+    /// Thumbnail stand-in for ingredient rows.
+    var emoji: String {
+        switch self {
+        case .produce: "🥬"
+        case .dairy: "🧀"
+        case .protein: "🥚"
+        case .grains: "🌾"
+        case .pantry: "🥫"
+        case .spices: "🧂"
+        case .condiments: "🫙"
+        case .other: "🍽️"
+        }
+    }
 }
