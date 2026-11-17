@@ -9,6 +9,9 @@ final class SuggestViewModel {
 
     private(set) var recipes: [RecipeSuggestion] = []
     private(set) var isGenerating = false
+    private(set) var isLoadingMore = false
+    /// False once neither Apple Intelligence nor the recipe book has anything new to add.
+    private(set) var hasMore = true
     private(set) var errorMessage: String?
     /// Why the shown recipes came from the bundled recipe book instead of the model; nil for model recipes.
     private(set) var fallbackNotice: String?
@@ -42,6 +45,7 @@ final class SuggestViewModel {
 
     func generate() async {
         errorMessage = nil
+        hasMore = true
         fallbackNotice = nil
         let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
         guard !names.isEmpty else { return }
@@ -65,6 +69,27 @@ final class SuggestViewModel {
         } catch {
             useFallback(pantry: names, maxMinutes: limit, reason: RecipeGenerator.message(for: error))
         }
+    }
+
+    /// Adds more recipes below the current ones: new ones from Apple Intelligence, else the next recipe-book matches.
+    func loadMore() async {
+        let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
+        let shown = Set(recipes.map(\.title))
+        let limit = maxMinutes
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        var fresh: [RecipeSuggestion] = []
+        if generator.unavailableMessage == nil,
+           let more = try? await generator.recipes(from: names, maxMinutes: limit, excluding: recipes.map(\.title)) {
+            fresh = more.filter { Self.isUsable($0, pantry: names, maxMinutes: limit) && !shown.contains($0.title) }
+        }
+        if fresh.isEmpty {
+            fresh = Array(FallbackRecipes.best(for: names, maxMinutes: limit, limit: .max)
+                .filter { !shown.contains($0.title) }
+                .prefix(6))
+        }
+        recipes += fresh
+        hasMore = !fresh.isEmpty
     }
 
     /// Shows bundled recipes instead, keeping `reason` visible; shows only the error if none fit.
