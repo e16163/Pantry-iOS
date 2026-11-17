@@ -38,6 +38,12 @@ final class RecipeDetailViewModel {
         }
     }
 
+    /// Catalog category for an ingredient name, `.other` if it's not in the catalog.
+    func category(of ingredient: String) -> IngredientCategory {
+        let name = IngredientName.normalize(ingredient)
+        return IngredientCatalog.all.first { $0.name == name }?.category ?? .other
+    }
+
     func cookViewModel() -> CookViewModel {
         CookViewModel(title: recipe.title, steps: recipe.steps)
     }

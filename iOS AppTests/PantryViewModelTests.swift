@@ -95,4 +95,13 @@ struct PantryViewModelTests {
         viewModel.delete(at: [1], in: .protein)
         #expect(viewModel.items.map(\.name) == ["bacon", "rice"])
     }
+
+    @Test func addDetectedAddsOnlyTickedItems() {
+        viewModel.detected = ["tomato", "basil", "egg"]
+        viewModel.selectedDetected = ["tomato", "egg"]
+        viewModel.addDetected()
+        #expect(viewModel.items.map(\.name).sorted() == ["egg", "tomato"])
+        #expect(viewModel.detected.isEmpty)
+        #expect(viewModel.selectedDetected.isEmpty)
+    }
 }

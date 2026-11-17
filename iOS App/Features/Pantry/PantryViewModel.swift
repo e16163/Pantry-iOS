@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Observation
 import SwiftData
 
@@ -53,6 +54,48 @@ final class PantryViewModel {
 
     func addSample() {
         Self.sample.forEach(add(suggestion:))
+    }
+
+    // MARK: Photo input
+
+    var detected: [String] = []
+    var selectedDetected: Set<String> = []
+    private(set) var isDetecting = false
+    private(set) var detectionError: String?
+
+    /// Reads ingredients out of a photo (JPEG/HEIC data) and ticks all of them for review.
+    func detect(photo data: Data) async {
+        detected = []
+        detectionError = nil
+        isDetecting = true
+        defer { isDetecting = false }
+        // Downscale (and apply EXIF rotation) before handing it to the model.
+        let options = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                       kCGImageSourceCreateThumbnailWithTransform: true,
+                       kCGImageSourceThumbnailMaxPixelSize: 1024] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else {
+            detectionError = "Couldn't open that photo. Try another one."
+            return
+        }
+        guard #available(iOS 27, macOS 27, visionOS 27, *) else {
+            detectionError = IngredientDetector.unavailableText
+            return
+        }
+        do {
+            let names = try await IngredientDetector().ingredients(in: image)
+            detected = IngredientDetector.clean(names, excluding: items.map(\.name))
+            selectedDetected = Set(detected)
+        } catch {
+            detectionError = "Try a closer, brighter shot, or type the ingredients in instead."
+        }
+    }
+
+    /// Adds the ticked detections the same way typed names are added.
+    func addDetected() {
+        detected.filter(selectedDetected.contains).forEach(add(suggestion:))
+        detected = []
+        selectedDetected = []
     }
 
     /// Pantry items grouped by category, in `IngredientCategory` order, skipping empty categories.

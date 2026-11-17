@@ -17,10 +17,8 @@ final class SavedViewModel {
         recipes = (try? context.fetch(FetchDescriptor<SavedRecipe>(sortBy: [SortDescriptor(\.savedAt, order: .reverse)]))) ?? []
     }
 
-    func delete(at offsets: IndexSet) {
-        for index in offsets {
-            context.delete(recipes[index])
-        }
+    func delete(_ recipe: SavedRecipe) {
+        context.delete(recipe)
         load()
     }
 

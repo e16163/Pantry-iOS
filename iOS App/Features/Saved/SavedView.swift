@@ -6,16 +6,27 @@ struct SavedView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(viewModel.recipes) { saved in
-                    NavigationLink {
-                        RecipeDetailView(viewModel: viewModel.detailViewModel(for: saved))
-                    } label: {
-                        RecipeRow(title: saved.title, minutes: saved.minutes, difficulty: saved.difficulty,
-                                  ingredientCount: saved.ingredients.count)
+            ScrollView {
+                if !viewModel.recipes.isEmpty {
+                    VStack(alignment: .leading, spacing: 20) {
+                        SectionHeader(title: "Your favorites", subtitle: "Press and hold a recipe to remove it")
+                        ForEach(viewModel.recipes) { saved in
+                            NavigationLink {
+                                RecipeDetailView(viewModel: viewModel.detailViewModel(for: saved))
+                            } label: {
+                                RecipeCard(title: saved.title, minutes: saved.minutes, difficulty: saved.difficulty,
+                                           ingredients: saved.ingredients)
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button("Remove from Saved", systemImage: "trash", role: .destructive) {
+                                    viewModel.delete(saved)
+                                }
+                            }
+                        }
                     }
+                    .padding()
                 }
-                .onDelete(perform: viewModel.delete)
             }
             .overlay {
                 if viewModel.recipes.isEmpty {
@@ -32,7 +43,6 @@ struct SavedView: View {
             }
             .navigationTitle("Saved")
             .toolbarTitleDisplayMode(.inlineLarge)
-            .contentMargins(.top, 4, for: .scrollContent)
             .onAppear(perform: viewModel.load)
         }
     }

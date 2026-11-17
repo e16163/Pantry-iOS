@@ -10,74 +10,95 @@ struct RecipeDetailView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 16) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                RecipeArtTile(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients, emojiSize: 110)
+                    .frame(height: 260)
+                VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
-                        .font(.largeTitle.bold())
+                        .font(.title.bold())
                         .fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 8) {
-                        StatTile(systemImage: "clock", value: "\(viewModel.recipe.minutes)", caption: "min")
-                        StatTile(systemImage: "chart.bar", value: viewModel.recipe.difficulty, caption: "level")
-                        StatTile(systemImage: "basket", value: "\(viewModel.recipe.ingredients.count)",
-                                 caption: "ingredients")
-                        StatTile(systemImage: "list.number", value: "\(viewModel.recipe.steps.count)", caption: "steps")
-                    }
-                    Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
-                        .buttonStyle(.primary)
-                        .disabled(viewModel.recipe.steps.isEmpty)
+                    RecipeMeta(minutes: viewModel.recipe.minutes, difficulty: viewModel.recipe.difficulty,
+                               ingredientCount: viewModel.recipe.ingredients.count)
                 }
-                .padding(.vertical, 6)
-            }
-            Section {
-                ForEach(viewModel.recipe.ingredients, id: \.self) { ingredient in
-                    let isChecked = viewModel.checked.contains(ingredient)
-                    Button {
-                        viewModel.toggle(ingredient)
-                    } label: {
-                        Label {
-                            Text(ingredient)
-                                .strikethrough(isChecked)
-                                .foregroundStyle(isChecked ? .secondary : .primary)
-                        } icon: {
-                            Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(.tint)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(isChecked ? .isSelected : [])
-                }
-            } header: {
-                Text("Ingredients")
-            } footer: {
-                Text("Tap to tick off what you've got out.")
-            }
-            Section("Steps") {
-                ForEach(Array(viewModel.recipe.steps.enumerated()), id: \.offset) { index, step in
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("\(index + 1)")
-                            .monospacedDigit()
-                            .fontWeight(.bold)
-                            .foregroundStyle(.tint)
-                        Text(step)
-                    }
-                }
+                .padding()
+                SectionDivider()
+                ingredients
+                    .padding()
+                SectionDivider()
+                steps
+                    .padding()
             }
         }
-        .toolbarTitleDisplayMode(.inline)  // the title is in the header, so the bar stays empty
-        .contentMargins(.top, 4, for: .scrollContent)
+        .ignoresSafeArea(edges: .top)
+        .safeAreaInset(edge: .bottom) {
+            Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
+                .buttonStyle(.primary)
+                .disabled(viewModel.recipe.steps.isEmpty)
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+                .background(.bar)
+        }
+        .toolbarTitleDisplayMode(.inline)
         .toolbar {
             Button(viewModel.isSaved ? "Saved" : "Save",
                    systemImage: viewModel.isSaved ? "bookmark.fill" : "bookmark",
                    action: viewModel.toggleSave)
         }
+        .sensoryFeedback(.success, trigger: viewModel.isSaved)
         #if os(macOS)
         .sheet(isPresented: $isCooking) { CookView(viewModel: viewModel.cookViewModel()) }
         #else
         .fullScreenCover(isPresented: $isCooking) { CookView(viewModel: viewModel.cookViewModel()) }
         #endif
+    }
+
+    private var ingredients: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "Ingredients", subtitle: "Tap to tick off what you've got out")
+            ForEach(viewModel.recipe.ingredients, id: \.self) { ingredient in
+                let isChecked = viewModel.checked.contains(ingredient)
+                Button {
+                    viewModel.toggle(ingredient)
+                } label: {
+                    HStack(spacing: 14) {
+                        Text(IngredientEmoji.emoji(for: ingredient, category: viewModel.category(of: ingredient)))
+                            .font(.title2)
+                            .frame(width: 52, height: 52)
+                            .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 8))
+                        Text(ingredient)
+                            .font(.body.weight(.medium))
+                            .strikethrough(isChecked)
+                            .foregroundStyle(isChecked ? .secondary : .primary)
+                        Spacer()
+                        Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                            .font(.title2)
+                            .foregroundStyle(isChecked ? Color.brand : .secondary)
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isChecked ? .isSelected : [])
+            }
+        }
+    }
+
+    private var steps: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SectionHeader(title: "Steps", subtitle: "^[\(viewModel.recipe.steps.count) step](inflect: true)")
+            ForEach(Array(viewModel.recipe.steps.enumerated()), id: \.offset) { index, step in
+                HStack(alignment: .top, spacing: 14) {
+                    Text("\(index + 1)")
+                        .font(.subheadline.bold())
+                        .monospacedDigit()
+                        .foregroundStyle(.background)
+                        .frame(width: 28, height: 28)
+                        .background(.primary, in: .circle)
+                    Text(step)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
     }
 }
 
