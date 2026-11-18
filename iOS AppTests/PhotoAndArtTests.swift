@@ -9,8 +9,8 @@ struct PhotoAndArtTests {
     }
 
     @Test func visionLabelsKeepOnlyCatalogIngredients() {
-        #expect(IngredientDetector.catalogNames(fromLabels: ["food", "bell_pepper", "eggs", "kitchen", "banana", "cheese"])
-                == ["bell pepper", "egg", "banana", "cheddar cheese"])
+        #expect(IngredientDetector.catalogNames(fromLabels: ["food", "bell_pepper", "eggs", "kitchen", "banana", "cheese", "pepper_veggie", "shellfish"])
+                == ["bell pepper", "egg", "banana", "cheddar cheese", "bell pepper", "shrimp"])
     }
 
     @Test func recipeArtOnlyMatchesTheSameDish() {

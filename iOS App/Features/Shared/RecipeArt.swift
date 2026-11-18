@@ -63,10 +63,10 @@ struct FoodPhoto: View {
 }
 
 extension FoodPhoto {
-    /// The ingredient's own photo, else its category photo, else the category's flat illustration.
+    /// The ingredient's own illustration, else its category's illustration in the same style.
     static func ingredient(_ name: String, category: IngredientCategory) -> FoodPhoto {
         FoodPhoto(name: "ingredient-\(slug(name))",
-                  fallbacks: ["photo-category-\(category.rawValue)", "category-\(category.rawValue)"])
+                  fallbacks: ["category-\(category.rawValue)"])
     }
 
     /// "jalapeño pepper" → "jalapeno-pepper"; must match tools/slice-ingredient-sheets.py.

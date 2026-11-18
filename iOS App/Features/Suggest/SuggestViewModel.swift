@@ -34,6 +34,7 @@ final class SuggestViewModel {
     func refreshPantry() {
         pantryNames = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
         pantryCount = pantryNames.count
+        generator.prewarm()
     }
 
     private var pantryNames: [String] = []
@@ -43,6 +44,7 @@ final class SuggestViewModel {
         Int((PantryCheck.coverage(of: recipe, pantry: pantryNames) * Double(recipe.ingredients.count)).rounded())
     }
 
+    /// Shows recipe-book matches right away, then puts Apple Intelligence's own new recipes on top when they're ready.
     func generate() async {
         errorMessage = nil
         hasMore = true
@@ -50,25 +52,39 @@ final class SuggestViewModel {
         let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
         guard !names.isEmpty else { return }
         let limit = maxMinutes
+        run += 1
+        let thisRun = run
+        recipes = FallbackRecipes.best(for: names, maxMinutes: limit)
         if let message = generator.unavailableMessage {
-            useFallback(pantry: names, maxMinutes: limit, reason: message)
+            report(message)
             return
         }
         isGenerating = true
-        defer { isGenerating = false }
+        defer { if run == thisRun { isGenerating = false } }
         do {
-            recipes = try await generator.recipes(from: names, maxMinutes: limit)
-                .filter { Self.isUsable($0, pantry: names, maxMinutes: limit) }
-            // Top up with recipe-book matches so there are always plenty of options to pick from.
             let shown = Set(recipes.map(\.title))
-            recipes += FallbackRecipes.best(for: names, maxMinutes: limit).filter { !shown.contains($0.title) }
-            if recipes.isEmpty {
-                useFallback(pantry: names, maxMinutes: limit,
-                            reason: "Couldn't find recipes that fit. Try again or allow more time.")
-            }
+            let fresh = try await generator.recipes(from: names, maxMinutes: limit, excluding: recipes.map(\.title))
+                .filter { Self.isUsable($0, pantry: names, maxMinutes: limit) && !shown.contains($0.title) }
+            guard run == thisRun else { return }  // a newer search replaced this one
+            recipes = fresh + recipes
+            if recipes.isEmpty { errorMessage = "Couldn't find recipes that fit. Try again or allow more time." }
         } catch {
-            useFallback(pantry: names, maxMinutes: limit, reason: RecipeGenerator.message(for: error))
+            guard run == thisRun else { return }
+            report(RecipeGenerator.message(for: error))
         }
+    }
+
+    /// Bumped by every search, so an older one that finishes late doesn't overwrite newer results.
+    private var run = 0
+
+    /// Keeps the recipe-book results with `reason` as a notice, or shows only the error if there are none.
+    private func report(_ reason: String) {
+        if recipes.isEmpty { errorMessage = reason } else { fallbackNotice = reason }
+    }
+
+    /// Recipes that fit the selected time, so switching chips takes effect right away.
+    var visibleRecipes: [RecipeSuggestion] {
+        recipes.filter { $0.minutes <= (maxMinutes ?? .max) }
     }
 
     /// Adds more recipes below the current ones: new ones from Apple Intelligence, else the next recipe-book matches.
@@ -90,16 +106,6 @@ final class SuggestViewModel {
         }
         recipes += fresh
         hasMore = !fresh.isEmpty
-    }
-
-    /// Shows bundled recipes instead, keeping `reason` visible; shows only the error if none fit.
-    private func useFallback(pantry: [String], maxMinutes: Int?, reason: String) {
-        recipes = FallbackRecipes.best(for: pantry, maxMinutes: maxMinutes)
-        if recipes.isEmpty {
-            errorMessage = reason
-        } else {
-            fallbackNotice = reason
-        }
     }
 
     /// A generated recipe is shown only if it uses just the pantry (plus staples) and fits the time limit.
