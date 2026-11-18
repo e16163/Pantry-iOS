@@ -33,6 +33,16 @@ struct SuggestViewModelTests {
         #expect(!SuggestViewModel.isUsable(recipe(minutes: 10, ingredients: ["bacon"]), pantry: ["egg"], maxMinutes: 15))
     }
 
+    @MainActor @Test func switchingToAShorterTimeHidesLongerRecipes() async {
+        PantryViewModel.sample.forEach(pantry.add(suggestion:))
+        suggest.maxMinutes = nil
+        await suggest.generate()
+        #expect(suggest.recipes.contains { $0.minutes > 15 })
+        suggest.maxMinutes = 15
+        #expect(!suggest.visibleRecipes.isEmpty || suggest.recipes.allSatisfy { $0.minutes > 15 })
+        #expect(suggest.visibleRecipes.allSatisfy { $0.minutes <= 15 })
+    }
+
     @Test func cannotGenerateWithEmptyPantry() {
         suggest.refreshPantry()
         #expect(suggest.pantryCount == 0)

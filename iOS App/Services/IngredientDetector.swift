@@ -12,18 +12,20 @@ private struct DetectedIngredients {
 /// (iOS 26, older phones, the simulator) Vision's built-in object labels are matched to the ingredient catalog.
 struct IngredientDetector {
     func ingredients(in image: CGImage) async throws -> [String] {
+        var modelNames: [String] = []
         if #available(iOS 27, macOS 27, visionOS 27, *),
            SystemLanguageModel.default.availability == .available,
-           SystemLanguageModel.default.capabilities.contains(.vision),
-           let names = try? await modelIngredients(in: image), !names.isEmpty {
-            return names
+           SystemLanguageModel.default.capabilities.contains(.vision) {
+            modelNames = (try? await modelIngredients(in: image)) ?? []
         }
+        // Vision runs too, even with Apple Intelligence, to catch items the model skipped.
         // Needs a real device: the simulator can't run Vision's classifier.
-        let labels = try await ClassifyImageRequest().perform(on: image)
+        let labels = try? await ClassifyImageRequest().perform(on: image)
             .filter { $0.confidence >= 0.05 }
             .sorted { $0.confidence > $1.confidence }
             .map(\.identifier)
-        return Self.catalogNames(fromLabels: labels)
+        if modelNames.isEmpty && labels == nil { throw CocoaError(.fileReadCorruptFile) }
+        return modelNames + Self.catalogNames(fromLabels: labels ?? [])
     }
 
     /// Vision labels ("bell_pepper", "fruit", "eggs") kept only when they name a catalog ingredient.
@@ -33,7 +35,13 @@ struct IngredientDetector {
     }
 
     /// Vision's generic labels that stand for one catalog ingredient. Only for photos, not typed names.
-    private static let visionAliases = ["cheese": "cheddar cheese"]
+    private static let visionAliases = [
+        "cheese": "cheddar cheese", "beef": "ground beef", "pepper_veggie": "bell pepper", "jalapeno": "jalapeño",
+        "pita": "pita bread", "ramen": "ramen noodle", "shellfish": "shrimp", "tortilla": "flour tortilla",
+        "tuna": "canned tuna", "white_bread": "bread", "sugar_cube": "sugar", "fries": "frozen french fry",
+        "waffle": "frozen waffle", "dumpling": "frozen dumpling", "pizza": "frozen pizza",
+        "scrambled_eggs": "egg", "fried_egg": "egg",
+    ]
 
     private static let known = Set(IngredientCatalog.all.map(\.name))
 
@@ -41,7 +49,9 @@ struct IngredientDetector {
     private func modelIngredients(in image: CGImage) async throws -> [String] {
         let session = LanguageModelSession(instructions: """
             You list the food ingredients you can see in a photo of a fridge, pantry, or kitchen counter. \
-            Only list things you can actually see. Skip containers, brands, and non-food items.
+            Only list things you can actually see. Skip containers, brands, and non-food items. \
+            Look at every shelf, drawer and door. Read labels on jars, cartons and cans to tell what's inside. \
+            Use plain grocery names in the singular, like "egg", "bell pepper", "greek yogurt" or "soy sauce".
             """)
         let response = try await session.respond(generating: DetectedIngredients.self) {
             "List every food ingredient visible in this photo."

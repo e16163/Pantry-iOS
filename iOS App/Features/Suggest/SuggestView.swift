@@ -22,6 +22,8 @@ struct SuggestView: View {
                         ForEach(Self.timeChips, id: \.title) { chip in
                             Chip(systemImage: chip.systemImage, title: chip.title, isSelected: viewModel.maxMinutes == chip.minutes) {
                                 viewModel.maxMinutes = chip.minutes
+                                // Already showing results: search again for the new time instead of just hiding cards.
+                                if !viewModel.recipes.isEmpty { Task { await viewModel.generate() } }
                             }
                         }
                     }
@@ -105,14 +107,14 @@ struct SuggestView: View {
             } description: {
                 Text(message)
             }
-        } else if viewModel.isGenerating && viewModel.recipes.isEmpty {
+        } else if viewModel.isGenerating && viewModel.visibleRecipes.isEmpty {
             SectionHeader(title: "Recipes for you", subtitle: "Checking your pantry…")
             ForEach(0..<2, id: \.self) { _ in
                 RecipeCard(title: "Placeholder recipe name", minutes: 20, difficulty: "Easy",
                            ingredients: ["one", "two", "three"])
                     .redacted(reason: .placeholder)
             }
-        } else if viewModel.recipes.isEmpty {
+        } else if viewModel.visibleRecipes.isEmpty {
             ContentUnavailableView {
                 Label {
                     Text("Ready when you are")
@@ -130,7 +132,11 @@ struct SuggestView: View {
             if let notice = viewModel.fallbackNotice {
                 InfoBanner(systemImage: "book.closed", title: "Showing picks from our recipe book", message: notice)
             }
-            ForEach(Array(viewModel.recipes.enumerated()), id: \.offset) { _, recipe in
+            if viewModel.isGenerating {
+                InfoBanner(systemImage: "sparkles", title: "Apple Intelligence is writing new recipes for you",
+                           message: "They'll appear at the top in a moment. Start with these meanwhile.")
+            }
+            ForEach(Array(viewModel.visibleRecipes.enumerated()), id: \.offset) { _, recipe in
                 NavigationLink {
                     RecipeDetailView(viewModel: viewModel.detailViewModel(for: recipe))
                 } label: {
