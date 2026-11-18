@@ -78,10 +78,6 @@ final class PantryViewModel {
             detectionError = "Couldn't open that photo. Try another one."
             return
         }
-        guard #available(iOS 27, macOS 27, visionOS 27, *) else {
-            detectionError = IngredientDetector.unavailableText
-            return
-        }
         do {
             let names = try await IngredientDetector().ingredients(in: image)
             detected = IngredientDetector.clean(names, excluding: items.map(\.name))

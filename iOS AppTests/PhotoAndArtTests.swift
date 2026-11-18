@@ -8,6 +8,11 @@ struct PhotoAndArtTests {
         #expect(names == ["egg", "tomato"])
     }
 
+    @Test func visionLabelsKeepOnlyCatalogIngredients() {
+        #expect(IngredientDetector.catalogNames(fromLabels: ["food", "bell_pepper", "eggs", "kitchen", "banana", "cheese"])
+                == ["bell pepper", "egg", "banana", "cheddar cheese"])
+    }
+
     @Test func recipeArtOnlyMatchesTheSameDish() {
         #expect(RecipeArt.photo(title: "Spinach & Cheddar Omelette") == "dish-eggs")
         #expect(RecipeArt.photo(title: "Tomato Basil Spaghetti") == "dish-pasta")

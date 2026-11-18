@@ -10,7 +10,6 @@ struct PantryView: View {
     @State private var isPickingPhoto = false
     @State private var isTakingPhoto = false
     @State private var isReviewing = false
-    @State private var unavailableMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -116,11 +115,6 @@ struct PantryView: View {
             .sheet(isPresented: $isReviewing) {
                 DetectionReviewSheet(viewModel: viewModel)
             }
-            .alert("Photo scanning unavailable", isPresented: .constant(unavailableMessage != nil)) {
-                Button("OK") { unavailableMessage = nil }
-            } message: {
-                Text(unavailableMessage ?? "")
-            }
         }
     }
 }
@@ -167,20 +161,14 @@ extension PantryView {
         .frame(maxWidth: .infinity)
     }
 
-    /// Always shown, so a phone that can't scan says why instead of hiding the feature.
-    @ViewBuilder
     private var photoButton: some View {
-        if let message = IngredientDetector.unavailableMessage {
-            Button("Scan a photo", systemImage: "camera") { unavailableMessage = message }
-        } else {
-            Menu("Scan a photo", systemImage: "camera") {
-                #if os(iOS)
-                if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                    Button("Take photo", systemImage: "camera") { isTakingPhoto = true }
-                }
-                #endif
-                Button("Choose photo", systemImage: "photo.on.rectangle") { isPickingPhoto = true }
+        Menu("Scan a photo", systemImage: "camera") {
+            #if os(iOS)
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                Button("Take photo", systemImage: "camera") { isTakingPhoto = true }
             }
+            #endif
+            Button("Choose photo", systemImage: "photo.on.rectangle") { isPickingPhoto = true }
         }
     }
 

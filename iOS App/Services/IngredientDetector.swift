@@ -1,5 +1,6 @@
 import CoreGraphics
 import FoundationModels
+import Vision
 
 @Generable
 private struct DetectedIngredients {
@@ -7,21 +8,37 @@ private struct DetectedIngredients {
     var names: [String]
 }
 
-/// Spots ingredients in a photo with Apple's on-device model (needs iOS 27 vision support).
+/// Spots ingredients in a photo: Apple Intelligence reads it on iOS 27, and anywhere that can't
+/// (iOS 26, older phones, the simulator) Vision's built-in object labels are matched to the ingredient catalog.
 struct IngredientDetector {
-    static let unavailableText = "Spotting ingredients in photos needs Apple Intelligence on iOS 27 or later."
-
-    /// Why detection can't run here, or nil when it can.
-    static var unavailableMessage: String? {
-        guard #available(iOS 27, macOS 27, visionOS 27, *),
-              SystemLanguageModel.default.availability == .available,
-              SystemLanguageModel.default.capabilities.contains(.vision)
-        else { return unavailableText }
-        return nil
+    func ingredients(in image: CGImage) async throws -> [String] {
+        if #available(iOS 27, macOS 27, visionOS 27, *),
+           SystemLanguageModel.default.availability == .available,
+           SystemLanguageModel.default.capabilities.contains(.vision),
+           let names = try? await modelIngredients(in: image), !names.isEmpty {
+            return names
+        }
+        // Needs a real device: the simulator can't run Vision's classifier.
+        let labels = try await ClassifyImageRequest().perform(on: image)
+            .filter { $0.confidence >= 0.05 }
+            .sorted { $0.confidence > $1.confidence }
+            .map(\.identifier)
+        return Self.catalogNames(fromLabels: labels)
     }
 
+    /// Vision labels ("bell_pepper", "fruit", "eggs") kept only when they name a catalog ingredient.
+    static func catalogNames(fromLabels labels: [String]) -> [String] {
+        labels.map { IngredientName.normalize(visionAliases[$0] ?? $0.replacingOccurrences(of: "_", with: " ")) }
+            .filter(known.contains)
+    }
+
+    /// Vision's generic labels that stand for one catalog ingredient. Only for photos, not typed names.
+    private static let visionAliases = ["cheese": "cheddar cheese"]
+
+    private static let known = Set(IngredientCatalog.all.map(\.name))
+
     @available(iOS 27, macOS 27, visionOS 27, *)
-    func ingredients(in image: CGImage) async throws -> [String] {
+    private func modelIngredients(in image: CGImage) async throws -> [String] {
         let session = LanguageModelSession(instructions: """
             You list the food ingredients you can see in a photo of a fridge, pantry, or kitchen counter. \
             Only list things you can actually see. Skip containers, brands, and non-food items.
