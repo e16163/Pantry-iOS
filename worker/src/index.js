@@ -37,11 +37,17 @@ async function photo(url, env) {
   if (env.PIXABAY_KEY) {
     const known = await env.PHOTOS.get(`real:${title}`, "arrayBuffer");
     if (known) return new Response(known, { headers });
-    const words = title.split(" ");
+    // Words that describe the cooking, not the dish, only confuse a photo search.
+    const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
+    const words = title.split(" ").filter((word) => !filler.test(word));
     for (let i = 0; i < Math.min(words.length, 3); i++) {
       const search = await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
-        `&orientation=horizontal&safesearch=true&per_page=3&q=${encodeURIComponent(words.slice(i).join(" "))}`);
-      const found = search.ok ? (await search.json()).hits?.[0]?.largeImageURL : null;
+        `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(words.slice(i).join(" "))}`,
+        { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } });
+      console.log(`pixabay ${search.status} limit=${search.headers.get("x-ratelimit-limit")} left=${search.headers.get("x-ratelimit-remaining")} reset=${search.headers.get("x-ratelimit-reset")}`);
+      // A served plate, not raw ingredients on a table: "pasta" alone mostly finds dry noodles.
+      const hits = search.ok ? ((await search.json()).hits ?? []).filter((hit) => !/raw|uncooked|ingredient|dry|dried/.test(hit.tags)) : [];
+      const found = (hits.find((hit) => /dish|meal|plate|dinner|lunch|breakfast|cooked|served/.test(hit.tags)) ?? hits[0])?.largeImageURL;
       if (found) {
         const bytes = await (await fetch(found)).arrayBuffer();
         await env.PHOTOS.put(`real:${title}`, bytes);
@@ -96,7 +102,8 @@ async function scan(request, env) {
   return new Response(text, { headers: { "content-type": "application/json" } });
 }
 
-const RECIPE_RULES = "You are a home cook writing recipes for a cookbook. Use only the ingredients the user lists, " +
+const RECIPE_RULES = "You are a home cook writing recipes for a cookbook. Pick the few ingredients from the user's list that " +
+  "make a real, well-known kind of dish; it doesn't need to use them all. Use only the ingredients the user lists, " +
   "plus basic staples: salt, pepper, oil, and water. Never add other ingredients. Name each ingredient exactly as " +
   "it appears in the user's list. Give an amount for every ingredient, for 2 servings, in the same order. " +
   "Write 5 to 8 steps a beginner can follow without guessing: how to cut things, the heat level, how many " +
@@ -111,9 +118,10 @@ async function recipes(request, env) {
   if (Array.isArray(excluding) && excluding.length) rules += ` Don't suggest any of these: ${list(excluding.slice(-40), 40)}.`;
   // Three short requests at once are about 3x faster than one long one; each gets its own kind of dish so
   // the three don't repeat each other.
-  const kinds = ["a breakfast or brunch dish", "a quick lunch or snack", "a dinner main course"];
+  const kinds = ["breakfast, like an egg dish, toast or pancakes, never pasta", "lunch: a salad, sandwich, wrap, soup or " +
+    "rice bowl, never pasta", "a dinner main course"];
   const results = await Promise.allSettled(kinds.map((kind) => oneRecipe(env,
-    `My ingredients: ${list(ingredients, 80)}. Suggest 1 recipe: ${kind}.${rules}`)));
+    `Write 1 recipe for ${kind}. Choose from these ingredients: ${list(ingredients, 80)}.${rules}`)));
   const found = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
   if (found.length === 0) throw results[0].reason;
   return Response.json({ recipes: found });
