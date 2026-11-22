@@ -43,7 +43,7 @@ struct PageTitle: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.system(size: 34, weight: .heavy))
+                .font(.largeTitle.weight(.heavy))
                 .tracking(-0.5)
             if let subtitle {
                 Text(subtitle)
@@ -62,11 +62,13 @@ struct Chip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Button(action: action) {
+            // Icons are dropped at accessibility text sizes so the words fit.
             Label(title, systemImage: systemImage)
-                .labelStyle(.titleAndIcon)
+                .labelStyle(typeSize.isAccessibilitySize ? AnyLabelStyle(.titleOnly) : AnyLabelStyle(.titleAndIcon))
                 .font(.footnote.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -88,7 +90,7 @@ struct SectionHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 22, weight: .bold))
+            Text(title).font(.title2.bold())
             if let subtitle {
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
             }
@@ -172,6 +174,7 @@ struct RecipeCard: View {
     /// Drawn on device when there's no bundled photo for this dish.
     @State private var thumbnail: CGImage?
     @Environment(\.redactionReasons) private var redactionReasons
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -188,7 +191,9 @@ struct RecipeCard: View {
             } else {
                 onHandTag
             }
-            HStack(alignment: .top, spacing: 12) {
+            // The time pill goes under the title at accessibility text sizes, so the title keeps the full width.
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                                          : AnyLayout(HStackLayout(alignment: .top, spacing: 12))) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
                         .font(.headline)
@@ -198,7 +203,7 @@ struct RecipeCard: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 0)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
                 Text("\(minutes) min")
                     .font(.footnote.weight(.semibold))
                     .padding(.horizontal, 10)
@@ -237,4 +242,15 @@ struct RecipeMeta: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
     }
+}
+
+/// Lets a view switch label styles at runtime.
+struct AnyLabelStyle: LabelStyle {
+    private let make: (Configuration) -> AnyView
+
+    init(_ style: some LabelStyle) {
+        make = { AnyView(style.makeBody(configuration: $0)) }
+    }
+
+    func makeBody(configuration: Configuration) -> some View { make(configuration) }
 }

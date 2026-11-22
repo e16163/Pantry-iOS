@@ -56,7 +56,8 @@ final class SuggestViewModel {
         let thisRun = run
         recipes = FallbackRecipes.best(for: names, maxMinutes: limit)
         if let message = generator.unavailableMessage {
-            report(message)
+            // The reason reads as a note above book recipes, so it isn't shown on its own.
+            if recipes.isEmpty { errorMessage = Self.noBookMatchMessage } else { fallbackNotice = message }
             return
         }
         isGenerating = true
@@ -73,6 +74,9 @@ final class SuggestViewModel {
             report(RecipeGenerator.message(for: error))
         }
     }
+
+    nonisolated static let noBookMatchMessage =
+        "None of the built-in recipes fit your pantry yet. Add a few more ingredients or allow more time."
 
     /// Bumped by every search, so an older one that finishes late doesn't overwrite newer results.
     private var run = 0

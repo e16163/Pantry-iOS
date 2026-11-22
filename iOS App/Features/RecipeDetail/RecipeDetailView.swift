@@ -23,7 +23,7 @@ struct RecipeDetailView: View {
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
-                        .font(.system(size: 30, weight: .heavy))
+                        .font(.title.weight(.heavy))
                         .tracking(-0.5)
                         .fixedSize(horizontal: false, vertical: true)
                     RecipeMeta(minutes: viewModel.recipe.minutes, difficulty: viewModel.recipe.difficulty,

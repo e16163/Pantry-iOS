@@ -11,6 +11,8 @@ struct PantryView: View {
     @State private var isTakingPhoto = false
     @State private var isReviewing = false
     @State private var editingItem: PantryItem?
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverOn
 
     var body: some View {
         NavigationStack {
@@ -51,7 +53,7 @@ struct PantryView: View {
                     } header: {
                         HStack(alignment: .firstTextBaseline) {
                             Text(section.category.title)
-                                .font(.system(size: 22, weight: .bold))
+                                .font(.title2.bold())
                                 .foregroundStyle(Color.primary)
                             Spacer()
                             Text("\(section.items.count)")
@@ -185,29 +187,23 @@ extension PantryView {
         } label: {
             HStack(spacing: 14) {
                 Thumbnail(photo: .ingredient(item.name, category: item.category))
-                Text(item.name)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.primary)
-                Spacer(minLength: 8)
-                Group {
-                    if let quantity = item.quantityText {
-                        Text(quantity).foregroundStyle(.primary)
-                    } else {
-                        HStack(spacing: 3) {
-                            Image(systemName: "plus")
-                            Text("Amount")
-                        }
-                        .foregroundStyle(.secondary)
-                    }
+                // At accessibility text sizes the amount goes under the name, so neither wraps mid-word.
+                let layout = typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+                    : AnyLayout(HStackLayout(spacing: 8))
+                layout {
+                    Text(item.name)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.primary)
+                    if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                    amountPill(item)
                 }
-                .font(.footnote.weight(.semibold).monospacedDigit())
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.fill, in: .capsule)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(item.quantityText.map { "\(item.name), \($0)" } ?? item.name)
         .accessibilityHint("Edit name or amount")
         .swipeActions {
             Button("Remove", systemImage: "trash", role: .destructive) { viewModel.delete(item) }
@@ -217,6 +213,26 @@ extension PantryView {
             Button("Edit", systemImage: "pencil") { editingItem = item }
             Button("Remove", systemImage: "trash", role: .destructive) { viewModel.delete(item) }
         }
+    }
+
+    private func amountPill(_ item: PantryItem) -> some View {
+        Group {
+            if let quantity = item.quantityText {
+                Text(quantity).foregroundStyle(.primary)
+            } else {
+                HStack(spacing: 3) {
+                    Image(systemName: "plus")
+                    Text("Amount")
+                }
+                .foregroundStyle(.secondary)
+            }
+        }
+        .font(.footnote.weight(.semibold).monospacedDigit())
+        .lineLimit(1)
+        .fixedSize()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Color.fill, in: .capsule)
     }
 
     /// "Removed garlic · Undo" for a few seconds after a delete.
@@ -239,7 +255,9 @@ extension PantryView {
             .padding(.bottom, 8)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .task(id: removed.name) {
-                try? await Task.sleep(for: .seconds(4))
+                // VoiceOver users hear it and get longer to reach Undo.
+                AccessibilityNotification.Announcement("Removed \(removed.name). Undo is available.").post()
+                try? await Task.sleep(for: .seconds(voiceOverOn ? 10 : 4))
                 withAnimation { viewModel.clearUndo() }
             }
         }

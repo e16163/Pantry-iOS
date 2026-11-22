@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SuggestView: View {
     @Bindable var viewModel: SuggestViewModel
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private static let timeChips: [(systemImage: String, title: String, minutes: Int?)] = [
         ("bolt.fill", "15 min", 15), ("timer", "30 min", 30), ("clock", "1 hour", 60), ("infinity", "Any time", nil),
@@ -18,7 +19,9 @@ struct SuggestView: View {
                         .padding(.top, 8)
                     hero
                         .padding(.horizontal, Spacing.page)
-                    HStack(spacing: 8) {
+                    // One row normally; two columns at accessibility text sizes so the labels fit.
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8),
+                                             count: typeSize.isAccessibilitySize ? 2 : 4), spacing: 8) {
                         ForEach(Self.timeChips, id: \.title) { chip in
                             Chip(systemImage: chip.systemImage, title: chip.title, isSelected: viewModel.maxMinutes == chip.minutes) {
                                 viewModel.maxMinutes = chip.minutes
@@ -47,7 +50,7 @@ struct SuggestView: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Dinner from what\nyou've got.")
-                .font(.system(size: 28, weight: .heavy))
+                .font(.title.weight(.heavy))
                 .tracking(-0.5)
             Text(viewModel.pantryCount == 0
                  ? "Add a few ingredients in the Pantry tab to get started."
@@ -130,7 +133,7 @@ struct SuggestView: View {
             SectionHeader(title: "Recipes for you",
                           subtitle: viewModel.fallbackNotice == nil ? "Made from your pantry" : "From the Pantry recipe book")
             if let notice = viewModel.fallbackNotice {
-                InfoBanner(systemImage: "book.closed", title: "Showing picks from our recipe book", message: notice)
+                InfoBanner(systemImage: "book.closed", title: "Using the built-in recipe book", message: notice)
             }
             if viewModel.isGenerating {
                 InfoBanner(systemImage: "sparkles", title: "Apple Intelligence is writing new recipes for you",
