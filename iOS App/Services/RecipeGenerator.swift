@@ -54,13 +54,13 @@ final class RecipeGenerator {
         case .available:
             nil
         case .unavailable(.deviceNotEligible):
-            "This device doesn't support Apple Intelligence, so recipe ideas aren't available."
+            "This iPhone doesn't support Apple Intelligence, so these come from Pantry's built-in recipe book. They all match what's in your pantry."
         case .unavailable(.appleIntelligenceNotEnabled):
-            "Turn on Apple Intelligence in Settings to get recipe ideas."
+            "These come from Pantry's built-in recipe book. Turn on Apple Intelligence in Settings to also get new recipes written for your pantry."
         case .unavailable(.modelNotReady):
-            "Apple Intelligence is still getting ready. Try again in a few minutes."
+            "Apple Intelligence is still getting ready, so these come from Pantry's built-in recipe book for now."
         case .unavailable:
-            "Apple Intelligence isn't available on this device."
+            "Apple Intelligence isn't available right now, so these come from Pantry's built-in recipe book."
         }
     }
 

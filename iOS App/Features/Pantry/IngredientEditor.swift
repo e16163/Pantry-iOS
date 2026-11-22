@@ -40,6 +40,7 @@ struct IngredientEditor: View {
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(title)
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
@@ -86,19 +87,20 @@ struct IngredientEditor: View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(title: "How much?", subtitle: "Optional. Leave it empty if you don't want to track it.")
             HStack(spacing: 16) {
-                stepButton("minus", label: "Less") {
+                stepButton("minus", label: "Decrease amount") {
                     let next = (amount ?? 0) - step
                     amount = next > 0 ? next : nil
                 }
                 .disabled(amount == nil)
                 TextField("–", value: $amount, format: .number)
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .accessibilityLabel("Amount")
+                    .font(.system(.largeTitle, design: .rounded).bold())
                     .multilineTextAlignment(.center)
                     #if os(iOS)
                     .keyboardType(.decimalPad)
                     #endif
                     .frame(maxWidth: .infinity)
-                stepButton("plus", label: "More") { amount = (amount ?? 0) + step }
+                stepButton("plus", label: "Increase amount") { amount = (amount ?? 0) + step }
             }
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {

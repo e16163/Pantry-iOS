@@ -61,4 +61,23 @@ struct SuggestViewModelTests {
         #expect(suggest.pantryCount == 1)
         #expect(suggest.canGenerate)
     }
+
+    @MainActor @Test func withoutAppleIntelligenceAnEmptyBookSaysWhatToDo() async {
+        guard RecipeGenerator().unavailableMessage != nil else { return }  // only meaningful where the model is off
+        pantry.add(suggestion: "saffron")
+        await suggest.generate()
+        #expect(suggest.recipes.isEmpty)
+        #expect(suggest.errorMessage == SuggestViewModel.noBookMatchMessage)
+        #expect(suggest.fallbackNotice == nil)
+    }
+
+    @MainActor @Test func withoutAppleIntelligenceBookRecipesGetAFriendlyNote() async {
+        guard let reason = RecipeGenerator().unavailableMessage else { return }
+        PantryViewModel.sample.forEach(pantry.add(suggestion:))
+        await suggest.generate()
+        #expect(!suggest.recipes.isEmpty)
+        #expect(suggest.errorMessage == nil)
+        #expect(suggest.fallbackNotice == reason)
+        #expect(reason.contains("built-in recipe book"))
+    }
 }
