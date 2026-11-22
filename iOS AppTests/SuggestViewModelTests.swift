@@ -12,7 +12,7 @@ struct SuggestViewModelTests {
             for: PantryItem.self, SavedRecipe.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
-        suggest = SuggestViewModel(context: container.mainContext)
+        suggest = SuggestViewModel(context: container.mainContext, generator: RecipeGenerator(online: false))
         pantry = PantryViewModel(context: container.mainContext)
     }
 
