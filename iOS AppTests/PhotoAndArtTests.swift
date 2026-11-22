@@ -35,15 +35,45 @@ struct PhotoAndArtTests {
                 == ["bell pepper", "egg", "banana", "cheddar cheese", "bell pepper", "shrimp"])
     }
 
-    @Test func recipeArtOnlyMatchesTheSameDish() {
-        #expect(RecipeArt.photo(title: "Spinach & Cheddar Omelette") == "dish-eggs")
-        #expect(RecipeArt.photo(title: "Tomato Basil Spaghetti") == "dish-pasta")
-        // A look-alike photo would be wrong, so these get none.
-        #expect(RecipeArt.photo(title: "Classic Scrambled Eggs on Toast") == nil)
-        #expect(RecipeArt.photo(title: "Pesto Pasta") == nil)
-        #expect(RecipeArt.photo(title: "Mystery Dish") == nil)
-        #expect(RecipeArt.photo(title: "Egg Curry") == nil)
-        #expect(RecipeArt.photo(title: "Shrimp Fajitas") == nil)
+    /// A small library like the real one, so the test doesn't depend on which photos have been made yet.
+    let library = PhotoLibrary(dishes: [
+        .init(photo: "dish-omelette", words: "omelette omelet frittata", look: "folded omelette with spinach"),
+        .init(photo: "dish-tacos", words: "tacos", look: "soft tacos with chicken and salsa"),
+        .init(photo: "dish-bean-soup", words: "black bean soup bean soup", look: "black bean soup with avocado"),
+        .init(photo: "dish-pb-toast", words: "peanut butter banana toast", look: "toast with banana"),
+        .init(photo: "dish-smoothie", words: "smoothie shake", look: "strawberry banana smoothie"),
+        .init(photo: "dish-chicken", words: "roast chicken lemon garlic chicken thighs", look: "roasted chicken thighs"),
+        .init(photo: "dish-shrimp", words: "garlic butter shrimp scampi", look: "shrimp in a skillet"),
+        .init(photo: "dish-steak", words: "steak", look: "sliced steak with herb butter"),
+        .init(photo: "dish-fried-rice", words: "fried rice", look: "fried rice with egg"),
+        .init(photo: "dish-veggie-burger", words: "veggie burger black bean burger", look: "veggie burger"),
+        .init(photo: "dish-bibimbap", words: "bibimbap", look: "rice bowl with egg"),
+        .init(photo: "dish-burrito-bowl", words: "burrito bowl", look: "rice, beans and beef in a bowl"),
+    ], ingredients: ["black beans", "peanut butter", "banana", "garlic", "butter", "chicken", "steak", "egg", "spinach"])
+
+    @Test(arguments: [
+        ("Spinach & Cheddar Omelette", "dish-omelette"),
+        ("Black Bean Tacos", "dish-tacos"),            // the kind of dish beats an ingredient
+        ("Peanut Butter Smoothie", "dish-smoothie"),
+        ("Garlic Butter Steak Bites", "dish-steak"),   // flavor words count less than the dish
+        ("Veggie Fried Rice", "dish-fried-rice"),      // "veggie" alone doesn't pick the veggie burger
+        ("Bibimbap Rice Bowl", "dish-bibimbap"),       // a specific dish name wins
+        ("Lemon Herb Chicken", "dish-chicken"),
+    ])
+    func photoLibraryPicksTheClosestDish(title: String, photo: String) {
+        #expect(library.match(title) == photo)
+    }
+
+    @Test func photoLibraryLeavesUnknownDishesWithoutAPhoto() {
+        #expect(library.match("Mystery Dish") == nil)
+        #expect(library.match("Cheddar Herb Scones") == nil)
+    }
+
+    @Test func everyListedDishPhotoIsInTheApp() throws {
+        let url = try #require(Bundle.main.url(forResource: "dish_photos", withExtension: "json"))
+        let dishes = try JSONDecoder().decode([RecipeArt.Dish].self, from: Data(contentsOf: url))
+        #expect(dishes.count >= 15)
+        #expect(dishes.filter { !FoodPhoto.exists($0.photo) }.map(\.photo) == [])
     }
 
     @Test func ingredientPhotoSlugMatchesSlicerScript() {

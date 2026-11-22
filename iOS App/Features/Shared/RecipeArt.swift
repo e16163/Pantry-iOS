@@ -5,31 +5,116 @@ import UIKit
 import AppKit
 #endif
 
-/// Picks a dish photo for a recipe from its title, only when the photo shows that same dish.
+/// Picks the closest photo for any recipe title, including ones Apple Intelligence just wrote, from the
+/// dish photo library listed in `dish_photos.json` (made on a Mac by tools/generate-dish-photos.py).
 enum RecipeArt {
-    /// Title phrases each photo really shows. No match means no photo, never a look-alike.
-    private static let keywords: [(words: [String], photo: String)] = [
-        (["pancake"], "dish-pancakes"),
-        (["omelette", "omelet", "frittata"], "dish-eggs"),
-        (["spaghetti", "tomato pasta", "marinara"], "dish-pasta"),
-        (["greek salad", "green salad", "garden salad"], "dish-salad"),
-        (["vegetable soup", "veggie soup", "minestrone"], "dish-soup"),
-        (["chicken curry"], "dish-curry"),
-        (["taco"], "dish-tacos"),
-        (["fried rice"], "dish-rice-bowl"),
-        (["grilled cheese"], "dish-sandwich"),
-        (["salmon"], "dish-salmon"),
-        (["garlic shrimp", "shrimp scampi", "butter shrimp"], "dish-shrimp"),
-        (["roast chicken", "roasted chicken", "lemon garlic chicken", "chicken thigh"], "dish-chicken"),
-        (["steak"], "dish-steak"),
-        (["roasted potato", "roast potato"], "dish-potatoes"),
-        (["oatmeal", "porridge", "overnight oats"], "dish-oatmeal"),
-    ]
+    struct Dish: Decodable {
+        let photo: String
+        /// Words a title is matched against, like "quesadilla quesadillas".
+        let words: String
+        /// What the photo shows; its words only break ties.
+        let look: String
+    }
 
     static func photo(title: String) -> String? {
-        let title = title.lowercased()
-        return keywords.first { $0.words.contains(where: title.contains) }?.photo
+        library.match(title)
     }
+
+    static let library: PhotoLibrary = {
+        let url = Bundle.main.url(forResource: "dish_photos", withExtension: "json")!
+        return PhotoLibrary(dishes: try! JSONDecoder().decode([Dish].self, from: Data(contentsOf: url)),
+                            ingredients: IngredientCatalog.all.map(\.name))
+    }()
+}
+
+/// Matches a title the way a person would: a specific dish name ("bibimbap") wins outright, otherwise the
+/// kind of dish ("tacos", "soup") narrows it down and ingredients only break ties, so "Black Bean Tacos"
+/// gets tacos, not bean soup. Titles with nothing to go on ("Mystery Dish") get nil.
+struct PhotoLibrary {
+    private struct Entry {
+        let photo: String
+        let words: Set<String>
+        let look: Set<String>
+        /// Last word of the photo name, the dish's main word: "dish-beef-stew" → "stew".
+        let head: String
+    }
+
+    private let entries: [Entry]
+    /// How many dishes use each word; rare words say more about a dish.
+    private let dishCount: [String: Int]
+    private let ingredientWords: Set<String>
+
+    init(dishes: [RecipeArt.Dish], ingredients: [String]) {
+        entries = dishes.map {
+            Entry(photo: $0.photo, words: Set(Self.words($0.words)), look: Set(Self.words($0.look)),
+                  head: Self.words($0.photo.split(separator: "-").last.map(String.init) ?? "").first ?? "")
+        }
+        dishCount = entries.flatMap(\.words).reduce(into: [:]) { $0[$1, default: 0] += 1 }
+        ingredientWords = Set(ingredients.flatMap(Self.words))
+    }
+
+    func match(_ title: String) -> String? {
+        let words = Self.words(title)
+        let titleWords = Set(words)
+        let specific = Set(words.filter {
+            (dishCount[$0] ?? .max) <= 3 && !ingredientWords.contains($0)
+                && !Self.kinds.contains($0) && !Self.generic.contains($0)
+        })
+        // The last kind word is the dish: "Breakfast Burrito Bowl" is a bowl.
+        let kind = words.last { Self.kinds.contains($0) && dishCount[$0] != nil }
+        let pool = if !specific.isEmpty {
+            entries.filter { !$0.words.isDisjoint(with: specific) }
+        } else if let kind {
+            entries.filter { $0.words.contains(kind) }
+        } else {
+            entries.filter { mainWordMatches($0, titleWords) }
+        }
+        var best: (score: Double, photo: String)?
+        for entry in pool {  // strictly greater, so the earlier, more general dish wins a tie
+            let score = score(entry, titleWords, kind: kind)
+            if score > best?.score ?? -.infinity { best = (score, entry.photo) }
+        }
+        return best?.photo
+    }
+
+    private func mainWordMatches(_ entry: Entry, _ titleWords: Set<String>) -> Bool {
+        (titleWords.contains(entry.head) && !Self.generic.contains(entry.head))
+            || entry.words.intersection(titleWords).count >= 2
+    }
+
+    private func score(_ entry: Entry, _ titleWords: Set<String>, kind: String?) -> Double {
+        let shared = entry.words.intersection(titleWords).reduce(0.0) { total, word in
+            let rarity = log(Double(entries.count) / Double(dishCount[word] ?? 1))
+            // "Garlic butter" describes flavor, so it counts less than the dish itself.
+            let weight = Self.generic.contains(word) || (ingredientWords.contains(word) && word != entry.head) ? 0.5 : 1
+            return total + rarity * weight
+        }
+        let bonus: Double = if let kind { entry.head == kind ? 1 : 0 } else { mainWordMatches(entry, titleWords) ? 3 : 0 }
+        return shared + 0.3 * Double(entry.look.intersection(titleWords).count) + bonus
+    }
+
+    /// Lowercase words with fillers dropped and plurals folded: "Crispy Black Bean Tacos" → black, bean, taco.
+    static func words(_ text: String) -> [String] {
+        text.lowercased().split { !("a"..."z").contains($0) }.map(String.init)
+            .filter { !stopWords.contains($0) }
+            .map { $0.count > 3 && $0.hasSuffix("s") && !$0.hasSuffix("ss") ? String($0.dropLast()) : $0 }
+    }
+
+    private static let stopWords: Set<String> = ["with", "and", "on", "the", "a", "of", "in", "style", "classic",
+        "easy", "quick", "simple", "homemade", "my", "best", "one", "pan", "skillet", "creamy", "spicy", "crispy",
+        "fresh", "warm", "hearty", "light", "white", "tuscan", "cheesy", "fluffy", "chunky", "stuffed", "smoky",
+        "glazed"]
+    private static let kinds = Set(words("""
+        soup stew chili salad taco burrito bowl pasta noodle spaghetti curry sandwich toast pizza burger smoothie \
+        pancake waffle omelette rice cake pie cookie muffin wrap pita quesadilla fry hash skewer kebab dumpling roll \
+        chowder risotto casserole dip fajita enchilada nacho parfait
+        """))
+    /// Describe a dish without naming one, so they never decide the photo alone.
+    private static let generic = Set(words("""
+        veggie vegetable fried grilled roasted roast baked loaded bite breakfast sweet sour hot cold thai korean \
+        chinese japanese indian mexican italian greek french vietnamese spanish american southern moroccan \
+        mediterranean
+        """))
 }
 
 /// A photo from the asset catalog filling its frame, falling back to the first of `fallbacks` that exists and

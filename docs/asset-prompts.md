@@ -12,7 +12,7 @@ Start every prompt with this style line so the set looks consistent:
 
 | File name | Size | Prompt (after the style line) |
 |---|---|---|
-| `dish-eggs` | 3:2 landscape | A fluffy folded omelette with spinach and cherry tomatoes on a white plate, 45-degree angle. |
+| `dish-omelette` | 3:2 landscape | A fluffy folded omelette with spinach and cherry tomatoes on a white plate, 45-degree angle. |
 | `dish-pasta` | 3:2 landscape | A bowl of spaghetti in tomato sauce with basil and grated parmesan, 45-degree angle. |
 | `dish-sandwich` | 3:2 landscape | A golden grilled cheese sandwich cut diagonally, melted cheese pulling, on a wooden board. |
 | `dish-salad` | 3:2 landscape | A fresh green salad with tomatoes, cucumber and feta in a wide white bowl, top-down. |
@@ -25,7 +25,7 @@ Start every prompt with this style line so the set looks consistent:
 | `dish-soup` | 3:2 landscape | A bowl of hearty vegetable soup with crusty bread on the side, 45-degree angle. |
 | `dish-curry` | 3:2 landscape | A bowl of chicken curry with rice and cilantro, top-down. |
 | `dish-tacos` | 3:2 landscape | Three soft tacos with grilled chicken, salsa, lime wedges, on a plate, 45-degree angle. |
-| `dish-rice-bowl` | 3:2 landscape | A vegetable fried rice bowl with egg and green onions, chopsticks on the side, top-down. |
+| `dish-fried-rice` | 3:2 landscape | A vegetable fried rice bowl with egg and green onions, chopsticks on the side, top-down. |
 | `dish-salmon` | 3:2 landscape | A seared salmon fillet with lemon and roasted asparagus on a white plate. |
 | `dish-shrimp` | 3:2 landscape | Garlic butter shrimp in a skillet with parsley and lemon. |
 | `dish-chicken` | 3:2 landscape | Golden roasted chicken thighs with herbs and roasted potatoes on a plate. |
