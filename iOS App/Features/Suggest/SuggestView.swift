@@ -136,7 +136,7 @@ struct SuggestView: View {
                 InfoBanner(systemImage: "book.closed", title: "Using the built-in recipe book", message: notice)
             }
             if viewModel.isGenerating {
-                InfoBanner(systemImage: "sparkles", title: "Apple Intelligence is writing new recipes for you",
+                InfoBanner(systemImage: "sparkles", title: "Writing new recipes for you",
                            message: "They'll appear at the top in a moment. Start with these meanwhile.")
             }
             // At accessibility text sizes, side-scrolling cards get too cramped, so only the list shows.
