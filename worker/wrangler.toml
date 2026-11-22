@@ -10,4 +10,4 @@ binding = "AI"
 binding = "PHOTOS"
 id = "3c7a90fa08594d978d294f1047a2c805"
 
-# GEMINI_KEY, GROQ_KEY and PEXELS_KEY are secrets: npx wrangler secret put <NAME>
+# GEMINI_KEY, GROQ_KEY and PIXABAY_KEY are secrets: npx wrangler secret put <NAME>

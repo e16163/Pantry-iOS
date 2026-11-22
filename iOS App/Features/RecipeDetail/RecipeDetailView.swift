@@ -21,10 +21,6 @@ struct RecipeDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     RecipeMeta(minutes: viewModel.recipe.minutes, difficulty: viewModel.recipe.difficulty,
                                ingredientCount: viewModel.recipe.ingredients.count)
-                    // Pexels' API terms ask for a visible link back.
-                    Link("Photos from Pexels", destination: URL(string: "https://www.pexels.com")!)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
                 .padding(Spacing.page)
                 .padding(.top, 4)
