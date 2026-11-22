@@ -77,20 +77,3 @@ extension FoodPhoto {
             .joined(separator: "-")
     }
 }
-
-/// An illustration Image Playground drew for a recipe (see `RecipeThumbnails`), filling its frame.
-struct GeneratedRecipeImage: View {
-    let image: CGImage
-
-    var body: some View {
-        Color.secondary.opacity(0.12)
-            .overlay {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .scaledToFill()
-            }
-            .clipped()
-            .transition(.opacity)
-            .accessibilityHidden(true)
-    }
-}

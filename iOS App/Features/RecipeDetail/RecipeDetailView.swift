@@ -4,8 +4,6 @@ import SwiftUI
 struct RecipeDetailView: View {
     @State private var viewModel: RecipeDetailViewModel
     @State private var isCooking = false
-    /// Drawn on device when there's no bundled photo for this dish.
-    @State private var thumbnail: CGImage?
 
     init(viewModel: RecipeDetailViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -17,9 +15,9 @@ struct RecipeDetailView: View {
                 if let photo {
                     FoodPhoto(name: photo)
                         .frame(height: 300)
-                } else if let thumbnail {
-                    GeneratedRecipeImage(image: thumbnail)
-                        .frame(height: 300)
+                } else {
+                    IngredientMosaic(ingredients: viewModel.recipe.ingredients)
+                        .frame(height: 200)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
@@ -41,13 +39,7 @@ struct RecipeDetailView: View {
                     .padding(.vertical, 8)
             }
         }
-        .ignoresSafeArea(edges: photo == nil && thumbnail == nil ? [] : .top)
-        .task(id: viewModel.recipe.title) {
-            guard photo == nil else { return }
-            let image = await RecipeThumbnails.shared.image(title: viewModel.recipe.title,
-                                                            ingredients: viewModel.recipe.ingredients)
-            withAnimation { thumbnail = image }
-        }
+        .ignoresSafeArea(edges: photo == nil ? [] : .top)
         .safeAreaInset(edge: .bottom) {
             Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
                 .buttonStyle(.primary)

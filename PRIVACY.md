@@ -13,7 +13,6 @@ Nothing. Pantry has no accounts, no analytics, no ads and no tracking, and it do
 - **Your pantry and favorite recipes** are saved on your device only.
 - **Photos you scan** are read on your iPhone to find ingredients, using Apple's on-device tools. They are not uploaded and Pantry doesn't keep them.
 - **Fixes you make to a scan** (for example, changing "lemon" to "lime") are saved on your device so later scans get them right.
-- **Recipe pictures** made with Apple's Image Playground are created on your device and saved on it.
 - **Recipes written by Apple Intelligence** are created on your device. Pantry doesn't use any online AI service.
 
 Deleting the app deletes all of this.

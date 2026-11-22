@@ -30,10 +30,6 @@ struct PhotoAndArtTests {
         #expect(QuantityUnit.text(nil, nil) == nil)
     }
 
-    @Test func thumbnailFileNameIsSafe() {
-        #expect(RecipeThumbnails.fileName(for: "Mac & Cheese / Deluxe") == "mac---cheese---deluxe.png")
-    }
-
     @Test func visionLabelsKeepOnlyCatalogIngredients() {
         #expect(IngredientDetector.catalogNames(fromLabels: ["food", "bell_pepper", "eggs", "kitchen", "banana", "cheese", "pepper_veggie", "shellfish"])
                 == ["bell pepper", "egg", "banana", "cheddar cheese", "bell pepper", "shrimp"])
