@@ -43,6 +43,7 @@
         "ENABLE_USER_SELECTED_FILES": "readonly",
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_KEY_CFBundleDisplayName": "Pantry",
+        "INFOPLIST_KEY_UIUserInterfaceStyle": "Dark",
         "INFOPLIST_KEY_NSCameraUsageDescription": "Take a photo of your fridge or pantry and Pantry will list the ingredients it sees, so you don't have to type them. Photos are read on your iPhone and never uploaded or saved.",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]": "YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]": "YES",
