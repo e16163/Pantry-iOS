@@ -146,10 +146,9 @@ struct RecipePicture: View {
             }
         }
         // Menu-photo grade: the bright gray studio backgrounds glare on the dark app, so pull them down a
-        // little, make the food richer, and darken the edges so the dish carries the frame.
-        .saturation(1.18)
-        .contrast(1.12)
-        .brightness(-0.09)
+        // little and darken the edges so the dish carries the frame. Colors stay true; boosting them looked fake.
+        .contrast(1.04)
+        .brightness(-0.08)
         .overlay {
             ZStack {
                 Color.black.opacity(0.06)

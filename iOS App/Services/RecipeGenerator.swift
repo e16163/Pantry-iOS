@@ -1,3 +1,4 @@
+import Foundation
 import FoundationModels
 
 @Generable
@@ -22,7 +23,6 @@ private struct RecipeList {
     var recipes: [RecipeSuggestion]
 }
 
-/// Generates recipes from pantry ingredients with Apple's on-device model.
 extension RecipeSuggestion {
     /// "1 cup" for spinach, or nil when the recipe didn't say.
     func amount(for ingredient: String) -> String? {
@@ -36,6 +36,13 @@ extension RecipeSuggestion {
 final class RecipeGenerator {
     /// A session loaded ahead of time, so tapping Find recipes doesn't wait for the model to load.
     private var warmSession: LanguageModelSession?
+    /// Asks Gemini through Pantry's Worker first (a few seconds); Apple Intelligence on device takes 30 s or more.
+    private let online: Bool
+
+    /// Tests pass `online: false` so they don't call the Worker.
+    nonisolated init(online: Bool = true) {
+        self.online = online
+    }
 
     /// Call when the Suggest screen appears.
     func prewarm() {
@@ -94,6 +101,12 @@ final class RecipeGenerator {
         let timeRule = maxMinutes.map { " Each recipe must take at most \($0) minutes in total." } ?? ""
         // Last 30 titles only, to keep the prompt well inside the model's context window.
         let repeatRule = excluding.isEmpty ? "" : " Don't suggest these again: \(excluding.suffix(30).joined(separator: "; "))."
+        if online, let fresh = try? await Self.onlineRecipes(from: ingredients, maxMinutes: maxMinutes,
+                                                             excluding: excluding), !fresh.isEmpty {
+            return fresh
+        }
+        // Without a connection, Apple Intelligence writes them; the caller shows why if it can't.
+        if let message = unavailableMessage { throw Unavailable(message: message) }
         let session = warmSession ?? Self.makeSession()
         warmSession = nil
         let response = try await session.respond(
@@ -101,6 +114,30 @@ final class RecipeGenerator {
             generating: RecipeList.self
         )
         return response.content.recipes
+    }
+
+    struct Unavailable: Error {
+        let message: String
+    }
+
+    private static func onlineRecipes(from ingredients: [String], maxMinutes: Int?,
+                                      excluding: [String]) async throws -> [RecipeSuggestion] {
+        struct Request: Encodable { let ingredients: [String]; let maxMinutes: Int?; let excluding: [String] }
+        struct Recipe: Decodable {
+            let title: String, minutes: Int, difficulty: String, ingredients: [String], amounts: [String], steps: [String]
+        }
+        struct Response: Decodable { let recipes: [Recipe] }
+        var request = URLRequest(url: RecipeArt.server.appending(path: "recipes"), timeoutInterval: 30)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(Request(ingredients: ingredients, maxMinutes: maxMinutes,
+                                                            excluding: Array(excluding.suffix(40))))
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
+        return try JSONDecoder().decode(Response.self, from: data).recipes.map {
+            RecipeSuggestion(title: $0.title, minutes: $0.minutes, difficulty: $0.difficulty,
+                             ingredients: $0.ingredients.map { $0.lowercased() }, amounts: $0.amounts, steps: $0.steps)
+        }
     }
 
     private static func makeSession() -> LanguageModelSession {

@@ -24,10 +24,11 @@ final class SuggestViewModel {
     }
 
     private let context: ModelContext
-    private let generator = RecipeGenerator()
+    private let generator: RecipeGenerator
 
-    init(context: ModelContext) {
+    init(context: ModelContext, generator: RecipeGenerator = RecipeGenerator()) {
         self.context = context
+        self.generator = generator
     }
 
     /// Call when the screen appears, since the pantry is edited on another tab.
@@ -44,7 +45,7 @@ final class SuggestViewModel {
         Int((PantryCheck.coverage(of: recipe, pantry: pantryNames) * Double(recipe.ingredients.count)).rounded())
     }
 
-    /// Shows recipe-book matches right away, then puts Apple Intelligence's own new recipes on top when they're ready.
+    /// Shows recipe-book matches right away, then puts newly written recipes on top when they're ready.
     func generate() async {
         errorMessage = nil
         hasMore = true
@@ -55,11 +56,6 @@ final class SuggestViewModel {
         run += 1
         let thisRun = run
         recipes = FallbackRecipes.best(for: names, maxMinutes: limit)
-        if let message = generator.unavailableMessage {
-            // The reason reads as a note above book recipes, so it isn't shown on its own.
-            if recipes.isEmpty { errorMessage = Self.noBookMatchMessage } else { fallbackNotice = message }
-            return
-        }
         isGenerating = true
         defer { if run == thisRun { isGenerating = false } }
         do {
@@ -69,6 +65,10 @@ final class SuggestViewModel {
             guard run == thisRun else { return }  // a newer search replaced this one
             recipes = fresh + recipes
             if recipes.isEmpty { errorMessage = "Couldn't find recipes that fit. Try again or allow more time." }
+        } catch let error as RecipeGenerator.Unavailable {
+            guard run == thisRun else { return }
+            // The reason reads as a note above book recipes, so it isn't shown on its own.
+            if recipes.isEmpty { errorMessage = Self.noBookMatchMessage } else { fallbackNotice = error.message }
         } catch {
             guard run == thisRun else { return }
             report(RecipeGenerator.message(for: error))
@@ -103,7 +103,7 @@ final class SuggestViewModel {
         return [("You have everything", ready), ("Ready in 15 min", quick)].filter { $0.recipes.count >= 2 }
     }
 
-    /// Adds more recipes below the current ones: new ones from Apple Intelligence, else the next recipe-book matches.
+    /// Adds more recipes below the current ones: newly written ones, else the next recipe-book matches.
     func loadMore() async {
         let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
         let shown = Set(recipes.map(\.title))
@@ -113,7 +113,7 @@ final class SuggestViewModel {
         var fresh: [RecipeSuggestion] = []
         // No cap: every load is a new model call. A call whose recipes all fail the pantry check gets retried,
         // so one off batch doesn't stop the feed.
-        for _ in 0..<3 where fresh.isEmpty && generator.unavailableMessage == nil {
+        for _ in 0..<3 where fresh.isEmpty {
             guard let more = try? await generator.recipes(from: names, maxMinutes: limit,
                                                           excluding: recipes.map(\.title)) else { break }
             fresh = more.filter { Self.isUsable($0, pantry: names, maxMinutes: limit) && !shown.contains($0.title) }
@@ -124,8 +124,8 @@ final class SuggestViewModel {
                 .prefix(6))
         }
         recipes += fresh
-        // The model can always write more, so only the recipe book ever runs out.
-        hasMore = !fresh.isEmpty || generator.unavailableMessage == nil
+        // The models can always write more, so only the recipe book ever runs out.
+        hasMore = !fresh.isEmpty
     }
 
     /// A generated recipe is shown only if it uses just the pantry (plus staples) and fits the time limit.

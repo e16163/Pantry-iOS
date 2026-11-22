@@ -206,8 +206,11 @@ extension PantryView {
         .accessibilityLabel(item.quantityText.map { "\(item.name), \($0)" } ?? item.name)
         .accessibilityHint("Edit name or amount")
         .swipeActions {
+            // Own colors: the app-wide tint is white in dark mode, which turned these into blank white buttons.
             Button("Remove", systemImage: "trash", role: .destructive) { viewModel.delete(item) }
+                .tint(.red)
             Button("Edit", systemImage: "pencil") { editingItem = item }
+                .tint(.gray)
         }
         .contextMenu {
             Button("Edit", systemImage: "pencil") { editingItem = item }
