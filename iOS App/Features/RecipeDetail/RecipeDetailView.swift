@@ -12,13 +12,8 @@ struct RecipeDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let photo {
-                    FoodPhoto(name: photo)
-                        .frame(height: 300)
-                } else {
-                    IngredientMosaic(ingredients: viewModel.recipe.ingredients)
-                        .frame(height: 200)
-                }
+                RecipePicture(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients)
+                    .frame(height: 300)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
                         .font(.title.weight(.heavy))
@@ -39,7 +34,7 @@ struct RecipeDetailView: View {
                     .padding(.vertical, 8)
             }
         }
-        .ignoresSafeArea(edges: photo == nil ? [] : .top)
+        .ignoresSafeArea(edges: .top)
         .safeAreaInset(edge: .bottom) {
             Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
                 .buttonStyle(.primary)
@@ -71,10 +66,6 @@ struct RecipeDetailView: View {
                  "Ingredients:"] + recipe.ingredients.map { name in
                     "• " + (recipe.amount(for: name).map { "\($0) \(name)" } ?? name) } + ["", "Steps:"] + steps
                 + ["", "Made with Pantry"]).joined(separator: "\n")
-    }
-
-    private var photo: String? {
-        RecipeArt.photo(title: viewModel.recipe.title)
     }
 
     private var ingredients: some View {

@@ -176,14 +176,8 @@ struct RecipeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Every card gets a picture of the same size, like a delivery app's menu.
-            Group {
-                if let photo = RecipeArt.photo(title: title) {
-                    FoodPhoto(name: photo)
-                } else {
-                    IngredientMosaic(ingredients: ingredients)
-                }
-            }
-            .frame(height: 190)
+            RecipePicture(title: title, ingredients: ingredients)
+                .frame(height: 190)
             .clipShape(.rect(cornerRadius: 12))
             .overlay(alignment: .topLeading) { onHandTag.padding(12) }
             // The time pill goes under the title at accessibility text sizes, so the title keeps the full width.
