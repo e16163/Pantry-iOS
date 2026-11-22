@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-cucumber-salad.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

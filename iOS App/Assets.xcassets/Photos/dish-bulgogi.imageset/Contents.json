@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-bulgogi.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

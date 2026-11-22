@@ -125,20 +125,24 @@ struct PhotoLibrary {
         """))
 }
 
-/// The recipe's own picture from the Worker. Until it arrives (or with no connection, or once the free daily
-/// limit is used up) the closest bundled dish photo shows, else the recipe's ingredient drawings.
+/// The closest bundled dish photo, which shows instantly. Dishes without one get their own picture from the
+/// Worker, with the ingredient drawings until it arrives (or with no connection, or past the free daily limit).
 struct RecipePicture: View {
     let title: String
     let ingredients: [String]
 
     var body: some View {
-        AsyncImage(url: RecipeArt.onlinePhoto(title: title)) { phase in
-            if let image = phase.image {
-                Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
-            } else if let photo = RecipeArt.photo(title: title) {
+        Group {
+            if let photo = RecipeArt.photo(title: title) {
                 FoodPhoto(name: photo)
             } else {
-                IngredientMosaic(ingredients: ingredients)
+                AsyncImage(url: RecipeArt.onlinePhoto(title: title)) { phase in
+                    if let image = phase.image {
+                        Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
+                    } else {
+                        IngredientMosaic(ingredients: ingredients)
+                    }
+                }
             }
         }
         .accessibilityHidden(true)
