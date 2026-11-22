@@ -178,19 +178,19 @@ struct RecipeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let photo = RecipeArt.photo(title: title) {
-                FoodPhoto(name: photo)
-                    .frame(height: 190)
-                    .clipShape(.rect(cornerRadius: 12))
-                    .overlay(alignment: .topLeading) { onHandTag.padding(12) }
-            } else if let thumbnail {
-                GeneratedRecipeImage(image: thumbnail)
-                    .frame(height: 190)
-                    .clipShape(.rect(cornerRadius: 12))
-                    .overlay(alignment: .topLeading) { onHandTag.padding(12) }
-            } else {
-                onHandTag
+            // Every card gets a picture of the same size, like a delivery app's menu.
+            Group {
+                if let photo = RecipeArt.photo(title: title) {
+                    FoodPhoto(name: photo)
+                } else if let thumbnail {
+                    GeneratedRecipeImage(image: thumbnail)
+                } else {
+                    IngredientMosaic(ingredients: ingredients)
+                }
             }
+            .frame(height: 190)
+            .clipShape(.rect(cornerRadius: 12))
+            .overlay(alignment: .topLeading) { onHandTag.padding(12) }
             // The time pill goes under the title at accessibility text sizes, so the title keeps the full width.
             (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
                                           : AnyLayout(HStackLayout(alignment: .top, spacing: 12))) {
@@ -227,6 +227,31 @@ struct RecipeCard: View {
             TagPill(text: onHandCount >= ingredients.count
                     ? "You have everything"
                     : "You have \(onHandCount) of \(ingredients.count)")
+        }
+    }
+}
+
+/// Stand-in for a dish photo: the recipe's first few ingredient drawings side by side, edge to edge.
+struct IngredientMosaic: View {
+    let ingredients: [String]
+
+    var body: some View {
+        let names = ingredients.map { "ingredient-\(FoodPhoto.slug($0))" }.filter(FoodPhoto.exists).prefix(3)
+        if names.isEmpty {
+            FoodPhoto(name: "")  // gray tile with a fork and knife
+        } else {
+            // Whole drawings as rounded squares on the hero's near-black green, so nothing gets cropped.
+            HStack(spacing: 10) {
+                ForEach(Array(names), id: \.self) { name in
+                    Image(name).resizable().scaledToFit()
+                        .clipShape(.rect(cornerRadius: 14))
+                        .frame(maxWidth: 110)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(red: 0.09, green: 0.15, blue: 0.14))
+            .accessibilityHidden(true)
         }
     }
 }

@@ -91,6 +91,18 @@ final class SuggestViewModel {
         recipes.filter { $0.minutes <= (maxMinutes ?? .max) }
     }
 
+    /// Swipe-across rows above the full list. Rows don't repeat each other, need at least two recipes,
+    /// and only show once there are enough recipes that they aren't just the list again.
+    var shelves: [(title: String, recipes: [RecipeSuggestion])] {
+        guard visibleRecipes.count >= 6 else { return [] }
+        let ready = visibleRecipes.filter { onHandCount(for: $0) >= $0.ingredients.count }
+        let readyTitles = Set(ready.map(\.title))
+        // Pointless when the time chip already limits everything to 15 minutes.
+        let quick = (maxMinutes ?? .max) > 15
+            ? visibleRecipes.filter { $0.minutes <= 15 && !readyTitles.contains($0.title) } : []
+        return [("You have everything", ready), ("Ready in 15 min", quick)].filter { $0.recipes.count >= 2 }
+    }
+
     /// Adds more recipes below the current ones: new ones from Apple Intelligence, else the next recipe-book matches.
     func loadMore() async {
         let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
@@ -99,8 +111,11 @@ final class SuggestViewModel {
         isLoadingMore = true
         defer { isLoadingMore = false }
         var fresh: [RecipeSuggestion] = []
-        if generator.unavailableMessage == nil,
-           let more = try? await generator.recipes(from: names, maxMinutes: limit, excluding: recipes.map(\.title)) {
+        // No cap: every load is a new model call. A call whose recipes all fail the pantry check gets retried,
+        // so one off batch doesn't stop the feed.
+        for _ in 0..<3 where fresh.isEmpty && generator.unavailableMessage == nil {
+            guard let more = try? await generator.recipes(from: names, maxMinutes: limit,
+                                                          excluding: recipes.map(\.title)) else { break }
             fresh = more.filter { Self.isUsable($0, pantry: names, maxMinutes: limit) && !shown.contains($0.title) }
         }
         if fresh.isEmpty {
@@ -109,7 +124,8 @@ final class SuggestViewModel {
                 .prefix(6))
         }
         recipes += fresh
-        hasMore = !fresh.isEmpty
+        // The model can always write more, so only the recipe book ever runs out.
+        hasMore = !fresh.isEmpty || generator.unavailableMessage == nil
     }
 
     /// A generated recipe is shown only if it uses just the pantry (plus staples) and fits the time limit.
