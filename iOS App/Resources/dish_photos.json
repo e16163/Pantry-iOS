@@ -1,0 +1,77 @@
+[
+ {
+  "photo": "dish-omelette",
+  "words": "omelette omelet frittata",
+  "look": "A fluffy folded omelette with spinach and cherry tomatoes on a white plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-pasta",
+  "words": "spaghetti tomato pasta marinara",
+  "look": "A bowl of spaghetti in tomato sauce with basil and grated parmesan, 45-degree angle."
+ },
+ {
+  "photo": "dish-sandwich",
+  "words": "grilled cheese sandwich",
+  "look": "A golden grilled cheese sandwich cut diagonally, melted cheese pulling, on a wooden board."
+ },
+ {
+  "photo": "dish-salad",
+  "words": "green salad garden salad greek salad",
+  "look": "A fresh green salad with tomatoes, cucumber and feta in a wide white bowl, top-down."
+ },
+ {
+  "photo": "dish-pancakes",
+  "words": "pancakes",
+  "look": "A stack of fluffy pancakes with butter and maple syrup dripping, berries on the side."
+ },
+ {
+  "photo": "dish-soup",
+  "words": "vegetable soup minestrone",
+  "look": "A bowl of hearty vegetable soup with crusty bread on the side, 45-degree angle."
+ },
+ {
+  "photo": "dish-curry",
+  "words": "chicken curry",
+  "look": "A bowl of chicken curry with rice and cilantro, top-down."
+ },
+ {
+  "photo": "dish-tacos",
+  "words": "tacos",
+  "look": "Three soft tacos with grilled chicken, salsa, lime wedges, on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-fried-rice",
+  "words": "fried rice",
+  "look": "A vegetable fried rice bowl with egg and green onions, chopsticks on the side, top-down."
+ },
+ {
+  "photo": "dish-salmon",
+  "words": "salmon",
+  "look": "A seared salmon fillet with lemon and roasted asparagus on a white plate."
+ },
+ {
+  "photo": "dish-shrimp",
+  "words": "garlic butter shrimp scampi",
+  "look": "Garlic butter shrimp in a skillet with parsley and lemon."
+ },
+ {
+  "photo": "dish-chicken",
+  "words": "roast chicken lemon garlic chicken thighs",
+  "look": "Golden roasted chicken thighs with herbs and roasted potatoes on a plate."
+ },
+ {
+  "photo": "dish-steak",
+  "words": "steak",
+  "look": "A sliced medium-rare steak with herb butter on a wooden board."
+ },
+ {
+  "photo": "dish-potatoes",
+  "words": "roasted potatoes",
+  "look": "Crispy roasted baby potatoes with rosemary in a small cast-iron pan."
+ },
+ {
+  "photo": "dish-oatmeal",
+  "words": "oatmeal porridge oats",
+  "look": "A bowl of oatmeal topped with sliced banana, berries and honey, top-down."
+ }
+]
