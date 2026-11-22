@@ -1,5 +1,5 @@
 // Pantry's free backend on Cloudflare Workers.
-//   GET  /photo?title=Garlic%20Butter%20Steak  -> redirect to a real Pexels photo, else an AI-made JPEG kept in KV
+//   GET  /photo?title=Garlic%20Butter%20Steak  -> a real Pixabay photo, else an AI-made JPEG; both kept in KV
 //   POST /scan?hints=... (JPEG body; hints are the user's past fixes) -> {"items":[{"name":"egg","count":6}]}
 //   POST /recipes {"ingredients":["egg"],"maxMinutes":30,"excluding":["Omelette"]} -> {"recipes":[...3 recipes]}
 // Deploy: npx wrangler deploy (from this folder)
@@ -32,19 +32,20 @@ async function photo(url, env) {
   const title = (url.searchParams.get("title") ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
   if (!title) return new Response("Missing title", { status: 400 });
   const headers = { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" };
-  // A real photo from Pexels when there's one: "garlic butter steak", else "butter steak", then "steak".
-  if (env.PEXELS_KEY) {
-    const redirect = (to) => new Response(null, { status: 302, headers: { location: to, "cache-control": headers["cache-control"] } });
-    const known = await env.PHOTOS.get(`pexels:${title}`);
-    if (known) return redirect(known);
+  // A real photo from Pixabay when there's one: "garlic butter steak", else "butter steak", then "steak".
+  // Pixabay asks that photos be copied to our own server rather than linked, so they're kept in KV.
+  if (env.PIXABAY_KEY) {
+    const known = await env.PHOTOS.get(`real:${title}`, "arrayBuffer");
+    if (known) return new Response(known, { headers });
     const words = title.split(" ");
     for (let i = 0; i < Math.min(words.length, 3); i++) {
-      const search = await fetch(`https://api.pexels.com/v1/search?per_page=1&orientation=landscape&query=${
-        encodeURIComponent(words.slice(i).join(" ") + " food")}`, { headers: { authorization: env.PEXELS_KEY } });
-      const found = search.ok ? (await search.json()).photos?.[0]?.src.landscape : null;
+      const search = await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
+        `&orientation=horizontal&safesearch=true&per_page=3&q=${encodeURIComponent(words.slice(i).join(" "))}`);
+      const found = search.ok ? (await search.json()).hits?.[0]?.largeImageURL : null;
       if (found) {
-        await env.PHOTOS.put(`pexels:${title}`, found);
-        return redirect(found);
+        const bytes = await (await fetch(found)).arrayBuffer();
+        await env.PHOTOS.put(`real:${title}`, bytes);
+        return new Response(bytes, { headers });
       }
     }
   }

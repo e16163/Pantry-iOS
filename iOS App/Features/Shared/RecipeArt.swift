@@ -11,7 +11,7 @@ enum RecipeArt {
     /// Pantry's free Cloudflare Worker (worker/ in this repo).
     static let server = URL(string: "https://pantry.supersaladstinger.workers.dev")!
 
-    /// A real photo of this dish from Pexels; with `realOnly` false, an AI-made picture when Pexels has none.
+    /// A real photo of this dish from Pixabay; with `realOnly` false, an AI-made picture when Pixabay has none.
     static func onlinePhoto(title: String, realOnly: Bool = false) -> URL {
         server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)]
             + (realOnly ? [URLQueryItem(name: "real", value: "1")] : []))
@@ -126,8 +126,8 @@ struct PhotoLibrary {
         """))
 }
 
-/// A real photo of the dish from Pexels through the Worker. Until it arrives (or offline, or when Pexels has none)
-/// the closest bundled photo shows, else the ingredient drawings; dishes with no bundled photo and no Pexels match
+/// A real photo of the dish from Pixabay through the Worker. Until it arrives (or offline, or when Pixabay has none)
+/// the closest bundled photo shows, else the ingredient drawings; dishes with no bundled photo and no Pixabay match
 /// get an AI-made picture.
 struct RecipePicture: View {
     let title: String
