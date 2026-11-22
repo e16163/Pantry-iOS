@@ -171,9 +171,6 @@ struct RecipeCard: View {
     /// nil when there's no pantry to compare against (Saved).
     var onHandCount: Int? = nil
 
-    /// Drawn on device when there's no bundled photo for this dish.
-    @State private var thumbnail: CGImage?
-    @Environment(\.redactionReasons) private var redactionReasons
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -182,8 +179,6 @@ struct RecipeCard: View {
             Group {
                 if let photo = RecipeArt.photo(title: title) {
                     FoodPhoto(name: photo)
-                } else if let thumbnail {
-                    GeneratedRecipeImage(image: thumbnail)
                 } else {
                     IngredientMosaic(ingredients: ingredients)
                 }
@@ -213,12 +208,6 @@ struct RecipeCard: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
-        .task(id: title) {
-            // Loading placeholders and dishes with a bundled photo don't need one.
-            guard RecipeArt.photo(title: title) == nil, !redactionReasons.contains(.placeholder) else { return }
-            let image = await RecipeThumbnails.shared.image(title: title, ingredients: ingredients)
-            withAnimation(.easeOut(duration: 0.3)) { thumbnail = image }
-        }
     }
 
     @ViewBuilder
