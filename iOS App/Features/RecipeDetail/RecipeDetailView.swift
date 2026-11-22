@@ -41,8 +41,8 @@ struct RecipeDetailView: View {
         }
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
-            Button(viewModel.isSaved ? "Saved" : "Save",
-                   systemImage: viewModel.isSaved ? "bookmark.fill" : "bookmark",
+            Button(viewModel.isSaved ? "Remove from Favorites" : "Add to Favorites",
+                   systemImage: viewModel.isSaved ? "heart.fill" : "heart",
                    action: viewModel.toggleSave)
         }
         .sensoryFeedback(.success, trigger: viewModel.isSaved)

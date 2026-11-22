@@ -26,9 +26,9 @@ extension ButtonStyle where Self == PrimaryButtonStyle {
     static var primary: PrimaryButtonStyle { PrimaryButtonStyle() }
 }
 
-/// Outlined capsule with an emoji, for filters: filled black when selected.
+/// Outlined capsule with an optional emoji, for filters: filled black when selected.
 struct Chip: View {
-    let emoji: String
+    var emoji: String? = nil
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -36,7 +36,7 @@ struct Chip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Text(emoji)
+                if let emoji { Text(emoji) }
                 Text(title).font(.subheadline.weight(.semibold))
             }
             .lineLimit(1)

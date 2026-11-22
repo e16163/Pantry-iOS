@@ -46,20 +46,37 @@ enum RecipeArt {
     }
 }
 
-/// The emoji on its pastel background, sized by the caller.
+/// The emoji on its pastel background, sized by the caller; replaced by a generated illustration once one is ready.
 struct RecipeArtTile: View {
     let title: String
     let ingredients: [String]
     var emojiSize: CGFloat = 64
 
+    @State private var thumbnail: CGImage?
+    @Environment(\.redactionReasons) private var redactionReasons
+
     var body: some View {
         RecipeArt.palette[RecipeArt.colorIndex(title: title)]
             .overlay {
-                Text(RecipeArt.emoji(title: title, ingredients: ingredients))
-                    .font(.system(size: emojiSize))
+                if let thumbnail {
+                    Image(decorative: thumbnail, scale: 1)
+                        .resizable()
+                        .scaledToFill()
+                        .transition(.opacity)
+                } else {
+                    Text(RecipeArt.emoji(title: title, ingredients: ingredients))
+                        .font(.system(size: emojiSize))
+                }
             }
+            .clipped()
             .environment(\.colorScheme, .light)  // pastels stay pastel in dark mode
             .accessibilityHidden(true)
+            .task(id: title) {
+                // Loading placeholders don't get art.
+                guard !redactionReasons.contains(.placeholder) else { return }
+                let image = await RecipeThumbnails.shared.image(title: title, ingredients: ingredients)
+                withAnimation(.easeOut(duration: 0.3)) { thumbnail = image }
+            }
     }
 }
 
