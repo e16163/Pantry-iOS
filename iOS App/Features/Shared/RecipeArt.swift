@@ -11,9 +11,10 @@ enum RecipeArt {
     /// Pantry's free Cloudflare Worker (worker/ in this repo).
     static let server = URL(string: "https://pantry.supersaladstinger.workers.dev")!
 
-    /// A picture of this exact dish, made the first time anyone asks and stored for everyone after that.
-    static func onlinePhoto(title: String) -> URL {
-        server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)])
+    /// A real photo of this dish from Pexels; with `realOnly` false, an AI-made picture when Pexels has none.
+    static func onlinePhoto(title: String, realOnly: Bool = false) -> URL {
+        server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)]
+            + (realOnly ? [URLQueryItem(name: "real", value: "1")] : []))
     }
 
     struct Dish: Decodable {
@@ -125,24 +126,22 @@ struct PhotoLibrary {
         """))
 }
 
-/// The closest bundled dish photo, which shows instantly. Dishes without one get their own picture from the
-/// Worker, with the ingredient drawings until it arrives (or with no connection, or past the free daily limit).
+/// A real photo of the dish from Pexels through the Worker. Until it arrives (or offline, or when Pexels has none)
+/// the closest bundled photo shows, else the ingredient drawings; dishes with no bundled photo and no Pexels match
+/// get an AI-made picture.
 struct RecipePicture: View {
     let title: String
     let ingredients: [String]
 
     var body: some View {
-        Group {
-            if let photo = RecipeArt.photo(title: title) {
-                FoodPhoto(name: photo)
+        let bundled = RecipeArt.photo(title: title)
+        AsyncImage(url: RecipeArt.onlinePhoto(title: title, realOnly: bundled != nil)) { phase in
+            if let image = phase.image {
+                Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
+            } else if let bundled {
+                FoodPhoto(name: bundled)
             } else {
-                AsyncImage(url: RecipeArt.onlinePhoto(title: title)) { phase in
-                    if let image = phase.image {
-                        Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
-                    } else {
-                        IngredientMosaic(ingredients: ingredients)
-                    }
-                }
+                IngredientMosaic(ingredients: ingredients)
             }
         }
         // Menu-photo grade: the bright gray studio backgrounds glare on the dark app, so pull them down a
