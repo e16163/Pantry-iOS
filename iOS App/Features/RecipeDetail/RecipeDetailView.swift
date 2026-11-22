@@ -4,6 +4,8 @@ import SwiftUI
 struct RecipeDetailView: View {
     @State private var viewModel: RecipeDetailViewModel
     @State private var isCooking = false
+    /// Drawn on device when there's no bundled photo for this dish.
+    @State private var thumbnail: CGImage?
 
     init(viewModel: RecipeDetailViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -14,6 +16,9 @@ struct RecipeDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 if let photo {
                     FoodPhoto(name: photo)
+                        .frame(height: 300)
+                } else if let thumbnail {
+                    GeneratedRecipeImage(image: thumbnail)
                         .frame(height: 300)
                 }
                 VStack(alignment: .leading, spacing: 6) {
@@ -36,7 +41,13 @@ struct RecipeDetailView: View {
                     .padding(.vertical, 8)
             }
         }
-        .ignoresSafeArea(edges: photo == nil ? [] : .top)
+        .ignoresSafeArea(edges: photo == nil && thumbnail == nil ? [] : .top)
+        .task(id: viewModel.recipe.title) {
+            guard photo == nil else { return }
+            let image = await RecipeThumbnails.shared.image(title: viewModel.recipe.title,
+                                                            ingredients: viewModel.recipe.ingredients)
+            withAnimation { thumbnail = image }
+        }
         .safeAreaInset(edge: .bottom) {
             Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
                 .buttonStyle(.primary)
@@ -48,8 +59,8 @@ struct RecipeDetailView: View {
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ShareLink(item: shareText, subject: Text(viewModel.recipe.title))
-            Button(viewModel.isSaved ? "Saved" : "Save",
-                   systemImage: viewModel.isSaved ? "bookmark.fill" : "bookmark",
+            Button(viewModel.isSaved ? "Remove from Favorites" : "Add to Favorites",
+                   systemImage: viewModel.isSaved ? "heart.fill" : "heart",
                    action: viewModel.toggleSave)
         }
         .sensoryFeedback(.success, trigger: viewModel.isSaved)

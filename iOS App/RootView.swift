@@ -20,7 +20,7 @@ struct RootView: View {
             Tab("Suggest", systemImage: "sparkles") {
                 SuggestView(viewModel: suggest)
             }
-            Tab("Saved", systemImage: "bookmark") {
+            Tab("Favorites", systemImage: "heart") {
                 SavedView(viewModel: saved)
             }
         }

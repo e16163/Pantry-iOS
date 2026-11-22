@@ -8,9 +8,9 @@ struct SavedView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.section) {
-                    PageTitle(title: "Saved",
+                    PageTitle(title: "Favorites",
                               subtitle: viewModel.recipes.isEmpty
-                                ? "Recipes you bookmark show up here"
+                                ? "Recipes you heart show up here"
                                 : "Press and hold a recipe to remove it")
                     if viewModel.recipes.isEmpty {
                         emptyCard
@@ -24,7 +24,7 @@ struct SavedView: View {
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
-                            Button("Remove from Saved", systemImage: "trash", role: .destructive) {
+                            Button("Remove from Favorites", systemImage: "heart.slash", role: .destructive) {
                                 viewModel.delete(saved)
                             }
                         }
@@ -48,7 +48,7 @@ struct SavedView: View {
                 .padding(.top, 8)
                 .padding(.bottom, Spacing.section)
             }
-            .navigationTitle("Saved")
+            .navigationTitle("Favorites")
             #if os(iOS)
             .toolbarVisibility(.hidden, for: .navigationBar)
             #endif
@@ -66,9 +66,9 @@ extension SavedView {
                 .frame(width: 72, height: 72)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text("No saved recipes yet")
+                Text("No favorites yet")
                     .font(.headline)
-                Text("Tap the bookmark on any recipe to keep it here.")
+                Text("Tap the heart on any recipe to keep it here.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

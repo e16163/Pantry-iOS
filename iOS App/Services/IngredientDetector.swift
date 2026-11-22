@@ -1,22 +1,72 @@
 import CoreGraphics
+import Foundation
 import FoundationModels
 import Vision
 
 @Generable
-private struct DetectedIngredients {
-    @Guide(description: "Food ingredients visible in the photo, each a short lowercase name like \"egg\" or \"cheddar cheese\"")
-    var names: [String]
+struct DetectedItem {
+    @Guide(description: "Plain grocery name in the singular, lowercase, like \"egg\", \"bell pepper\" or \"cheddar cheese\"")
+    var name: String
+    @Guide(description: "How many separate pieces you can count, like 6 for six eggs. 0 if it isn't countable, like milk, rice or flour")
+    var count: Int
 }
 
-/// Spots ingredients in a photo: Apple Intelligence reads it on iOS 27, and anywhere that can't
+@Generable
+private struct DetectedIngredients {
+    @Guide(description: "Every food ingredient visible in the photo")
+    var items: [DetectedItem]
+}
+
+/// One thing spotted in a photo, which the user can fix before it goes in the pantry.
+struct Detection: Identifiable, Equatable {
+    let id = UUID()
+    /// The scanned name (after known fixes), compared with `name` to learn from the user's edits.
+    let detectedName: String
+    var name: String
+    var quantity: Double?
+    var unit: QuantityUnit?
+    var isSelected = true
+
+    init(name: String, quantity: Double? = nil, unit: QuantityUnit? = nil) {
+        detectedName = name
+        self.name = name
+        self.quantity = quantity
+        self.unit = unit
+    }
+}
+
+/// Spots ingredients in a photo: Apple Intelligence reads it (with counts) on iOS 27, and anywhere that can't
 /// (iOS 26, older phones, the simulator) Vision's built-in object labels are matched to the ingredient catalog.
 struct IngredientDetector {
-    func ingredients(in image: CGImage) async throws -> [String] {
-        var modelNames: [String] = []
-        if #available(iOS 27, macOS 27, visionOS 27, *),
-           SystemLanguageModel.default.availability == .available,
-           SystemLanguageModel.default.capabilities.contains(.vision) {
-            modelNames = (try? await modelIngredients(in: image)) ?? []
+    private let session: LanguageModelSession
+
+    /// `hints` are the user's past fixes, so the model uses their names for things.
+    init(hints: [String] = []) {
+        let fixes = hints.isEmpty ? "" : " This user has corrected past scans: \(hints.joined(separator: "; "))."
+        session = LanguageModelSession(instructions: """
+            You list the food ingredients you can see in a photo of a fridge, pantry, or kitchen counter. \
+            Only list things you can actually see. Skip containers, brands, and non-food items. \
+            Look at every shelf, drawer and door. Read labels on jars, cartons and cans to tell what's inside. \
+            Use plain grocery names in the singular, like "egg", "bell pepper", "greek yogurt" or "soy sauce". \
+            Count separate pieces when you can.\(fixes)
+            """)
+    }
+
+    private static var modelCanSee: Bool {
+        guard #available(iOS 27, macOS 27, visionOS 27, *) else { return false }
+        return SystemLanguageModel.default.availability == .available
+            && SystemLanguageModel.default.capabilities.contains(.vision)
+    }
+
+    /// Loads the model ahead of time, so the scan starts faster once the photo arrives.
+    func prewarm() {
+        if Self.modelCanSee { session.prewarm() }
+    }
+
+    func ingredients(in image: CGImage) async throws -> [DetectedItem] {
+        var modelItems: [DetectedItem] = []
+        if #available(iOS 27, macOS 27, visionOS 27, *), Self.modelCanSee {
+            modelItems = (try? await modelIngredients(in: image)) ?? []
         }
         // Vision runs too, even with Apple Intelligence, to catch items the model skipped.
         // Needs a real device: the simulator can't run Vision's classifier.
@@ -24,8 +74,8 @@ struct IngredientDetector {
             .filter { $0.confidence >= 0.05 }
             .sorted { $0.confidence > $1.confidence }
             .map(\.identifier)
-        if modelNames.isEmpty && labels == nil { throw CocoaError(.fileReadCorruptFile) }
-        return modelNames + Self.catalogNames(fromLabels: labels ?? [])
+        if modelItems.isEmpty && labels == nil { throw CocoaError(.fileReadCorruptFile) }
+        return modelItems + Self.catalogNames(fromLabels: labels ?? []).map { DetectedItem(name: $0, count: 0) }
     }
 
     /// Vision labels ("bell_pepper", "fruit", "eggs") kept only when they name a catalog ingredient.
@@ -46,23 +96,24 @@ struct IngredientDetector {
     private static let known = Set(IngredientCatalog.all.map(\.name))
 
     @available(iOS 27, macOS 27, visionOS 27, *)
-    private func modelIngredients(in image: CGImage) async throws -> [String] {
-        let session = LanguageModelSession(instructions: """
-            You list the food ingredients you can see in a photo of a fridge, pantry, or kitchen counter. \
-            Only list things you can actually see. Skip containers, brands, and non-food items. \
-            Look at every shelf, drawer and door. Read labels on jars, cartons and cans to tell what's inside. \
-            Use plain grocery names in the singular, like "egg", "bell pepper", "greek yogurt" or "soy sauce".
-            """)
-        let response = try await session.respond(generating: DetectedIngredients.self) {
-            "List every food ingredient visible in this photo."
+    private func modelIngredients(in image: CGImage) async throws -> [DetectedItem] {
+        let response = try await session.respond(generating: DetectedIngredients.self,
+                                                 options: GenerationOptions(samplingMode: .greedy)) {
+            "List every food ingredient visible in this photo, with how many you can count."
             Attachment(image)
         }
-        return response.content.names
+        return response.content.items
     }
 
-    /// Normalized names with blanks, duplicates and anything already in the pantry removed, in original order.
-    static func clean(_ names: [String], excluding pantry: [String]) -> [String] {
+    /// Normalized, fixed-up detections with blanks, duplicates and anything already in the pantry removed, in order.
+    /// When the model and Vision both name something, the first (the model's, with its count) wins.
+    static func clean(_ items: [DetectedItem], excluding pantry: [String],
+                      corrections: ScanCorrections) -> [Detection] {
         var seen = Set(pantry)
-        return names.map(IngredientName.normalize).filter { !$0.isEmpty && seen.insert($0).inserted }
+        return items.compactMap { item in
+            let name = corrections.apply(IngredientName.normalize(item.name))
+            guard !name.isEmpty, seen.insert(name).inserted else { return nil }
+            return item.count > 0 ? Detection(name: name, quantity: Double(item.count), unit: .pieces) : Detection(name: name)
+        }
     }
 }

@@ -1,11 +1,37 @@
+import Foundation
 import SwiftData
 import Testing
 @testable import iOS_App
 
 struct PhotoAndArtTests {
-    @Test func cleanNormalizesDedupesAndSkipsPantry() {
-        let names = IngredientDetector.clean(["Eggs", "  ", "Tomato", "eggs", "Garlic"], excluding: ["garlic"])
-        #expect(names == ["egg", "tomato"])
+    @Test func cleanNormalizesDedupesSkipsPantryAndKeepsCounts() {
+        let items = [("Eggs", 6), ("  ", 0), ("Tomato", 0), ("eggs", 2), ("Garlic", 1)].map { DetectedItem(name: $0, count: $1) }
+        let found = IngredientDetector.clean(items, excluding: ["garlic"],
+                                             corrections: ScanCorrections(defaults: UserDefaults(suiteName: UUID().uuidString)!))
+        #expect(found.map(\.name) == ["egg", "tomato"])
+        #expect(found.map(\.quantity) == [6, nil])
+        #expect(found[0].unit == .pieces)
+    }
+
+    @Test func correctionsIgnoreNoOpsAndBecomeHints() {
+        var corrections = ScanCorrections(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        corrections.record(from: "egg", to: " Egg ")
+        corrections.record(from: "lemon", to: "lime")
+        #expect(corrections.fixes == ["lemon": "lime"])
+        #expect(corrections.apply("lemon") == "lime")
+        #expect(corrections.hints == ["what looks like \"lemon\" is \"lime\""])
+    }
+
+    @Test func quantityText() {
+        #expect(QuantityUnit.text(3, .pieces) == "3")
+        #expect(QuantityUnit.text(500, .grams) == "500 g")
+        #expect(QuantityUnit.text(2, .cups) == "2 cups")
+        #expect(QuantityUnit.text(0, .cups) == nil)
+        #expect(QuantityUnit.text(nil, nil) == nil)
+    }
+
+    @Test func thumbnailFileNameIsSafe() {
+        #expect(RecipeThumbnails.fileName(for: "Mac & Cheese / Deluxe") == "mac---cheese---deluxe.png")
     }
 
     @Test func visionLabelsKeepOnlyCatalogIngredients() {

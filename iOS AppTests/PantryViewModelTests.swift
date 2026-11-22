@@ -1,3 +1,4 @@
+import Foundation
 import SwiftData
 import Testing
 @testable import iOS_App
@@ -11,8 +12,11 @@ struct PantryViewModelTests {
             for: PantryItem.self, SavedRecipe.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
-        viewModel = PantryViewModel(context: container.mainContext)
+        viewModel = PantryViewModel(context: container.mainContext, corrections: ScanCorrections(defaults: defaults))
     }
+
+    /// Fresh, throwaway storage so learned scan fixes don't leak between tests.
+    let defaults = UserDefaults(suiteName: UUID().uuidString)!
 
     @Test func addNormalizesNameAndSetsCategory() {
         viewModel.newItemName = "  Eggs "
@@ -96,12 +100,61 @@ struct PantryViewModelTests {
         #expect(viewModel.items.map(\.name) == ["bacon", "rice"])
     }
 
-    @Test func addDetectedAddsOnlyTickedItems() {
-        viewModel.detected = ["tomato", "basil", "egg"]
-        viewModel.selectedDetected = ["tomato", "egg"]
+    @Test func addDetectedAddsOnlyTickedItemsWithAmounts() {
+        var basil = Detection(name: "basil")
+        basil.isSelected = false
+        viewModel.detected = [Detection(name: "tomato", quantity: 3, unit: .pieces), basil, Detection(name: "egg")]
         viewModel.addDetected()
         #expect(viewModel.items.map(\.name).sorted() == ["egg", "tomato"])
+        #expect(viewModel.items.first { $0.name == "tomato" }?.quantityText == "3")
         #expect(viewModel.detected.isEmpty)
-        #expect(viewModel.selectedDetected.isEmpty)
+    }
+
+    @Test func fixedScanNamesAreRememberedForNextScan() {
+        var lemon = Detection(name: "lemon")
+        lemon.name = "lime"
+        viewModel.detected = [lemon]
+        viewModel.addDetected()
+        #expect(viewModel.items.map(\.name) == ["lime"])
+
+        let next = IngredientDetector.clean([DetectedItem(name: "Lemons", count: 2)], excluding: [],
+                                            corrections: ScanCorrections(defaults: defaults))
+        #expect(next.map(\.name) == ["lime"])
+    }
+
+    @Test func updateRenamesRecategorizesAndSetsAmount() {
+        viewModel.add(suggestion: "egg")
+        let item = viewModel.items[0]
+        #expect(viewModel.update(item, name: "Tomatoes", quantity: 500, unit: .grams))
+        #expect(item.name == "tomato")
+        #expect(item.category == .produce)
+        #expect(item.quantityText == "500 g")
+    }
+
+    @Test func updateRejectsDuplicateOrBlankNames() {
+        viewModel.add(suggestion: "egg")
+        viewModel.add(suggestion: "rice")
+        let egg = viewModel.items.first { $0.name == "egg" }!
+        #expect(!viewModel.update(egg, name: "rice", quantity: nil, unit: nil))
+        #expect(!viewModel.update(egg, name: "  ", quantity: nil, unit: nil))
+        #expect(egg.name == "egg")
+    }
+
+    @Test func clearingAmountClearsUnit() {
+        viewModel.add(suggestion: "egg")
+        let egg = viewModel.items[0]
+        viewModel.update(egg, name: "egg", quantity: 0, unit: .pieces)
+        #expect(egg.quantity == nil && egg.unit == nil)
+    }
+
+    @Test func undoPutsDeletedItemBack() {
+        viewModel.add(suggestion: "egg")
+        viewModel.update(viewModel.items[0], name: "egg", quantity: 6, unit: .pieces)
+        viewModel.delete(viewModel.items[0])
+        #expect(viewModel.items.isEmpty)
+        viewModel.undoDelete()
+        #expect(viewModel.items.map(\.name) == ["egg"])
+        #expect(viewModel.items[0].quantityText == "6")
+        #expect(viewModel.recentlyDeleted == nil)
     }
 }

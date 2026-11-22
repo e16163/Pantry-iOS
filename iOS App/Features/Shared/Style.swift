@@ -169,10 +169,19 @@ struct RecipeCard: View {
     /// nil when there's no pantry to compare against (Saved).
     var onHandCount: Int? = nil
 
+    /// Drawn on device when there's no bundled photo for this dish.
+    @State private var thumbnail: CGImage?
+    @Environment(\.redactionReasons) private var redactionReasons
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let photo = RecipeArt.photo(title: title) {
                 FoodPhoto(name: photo)
+                    .frame(height: 190)
+                    .clipShape(.rect(cornerRadius: 12))
+                    .overlay(alignment: .topLeading) { onHandTag.padding(12) }
+            } else if let thumbnail {
+                GeneratedRecipeImage(image: thumbnail)
                     .frame(height: 190)
                     .clipShape(.rect(cornerRadius: 12))
                     .overlay(alignment: .topLeading) { onHandTag.padding(12) }
@@ -199,6 +208,12 @@ struct RecipeCard: View {
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+        .task(id: title) {
+            // Loading placeholders and dishes with a bundled photo don't need one.
+            guard RecipeArt.photo(title: title) == nil, !redactionReasons.contains(.placeholder) else { return }
+            let image = await RecipeThumbnails.shared.image(title: title, ingredients: ingredients)
+            withAnimation(.easeOut(duration: 0.3)) { thumbnail = image }
+        }
     }
 
     @ViewBuilder

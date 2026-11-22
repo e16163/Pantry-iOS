@@ -1,10 +1,12 @@
 import SwiftData
 import SwiftUI
 
-/// Shows what the model spotted in a photo; everything starts ticked, the user unticks mistakes and adds the rest.
+/// Shows what the model spotted in a photo; everything starts ticked. The user unticks mistakes,
+/// taps an item to fix its name or amount, and adds the rest. Name fixes are remembered for later scans.
 struct DetectionReviewSheet: View {
     @Bindable var viewModel: PantryViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var editing: Detection?
 
     var body: some View {
         NavigationStack {
@@ -18,12 +20,12 @@ struct DetectionReviewSheet: View {
                 }
                 .safeAreaInset(edge: .bottom) {
                     if !viewModel.isDetecting && !viewModel.detected.isEmpty {
-                        Button("Add \(viewModel.selectedDetected.count) to pantry") {
+                        Button("Add \(viewModel.selectedDetectedCount) to pantry") {
                             viewModel.addDetected()
                             dismiss()
                         }
                         .buttonStyle(.primary)
-                        .disabled(viewModel.selectedDetected.isEmpty)
+                        .disabled(viewModel.selectedDetectedCount == 0)
                         .padding()
                     }
                 }
@@ -42,25 +44,64 @@ struct DetectionReviewSheet: View {
             ContentUnavailableView("No new ingredients spotted", systemImage: "eye.slash",
                                    description: Text("Everything in the photo is already in your pantry, or try a closer, brighter shot."))
         } else {
-            List(viewModel.detected, id: \.self) { name in
-                let isOn = viewModel.selectedDetected.contains(name)
-                Button {
-                    if isOn { viewModel.selectedDetected.remove(name) } else { viewModel.selectedDetected.insert(name) }
-                } label: {
-                    HStack(spacing: 14) {
-                        Thumbnail(photo: .ingredient(name, category: IngredientCatalog.all.first { $0.name == name }?.category ?? .other), size: 44)
-                        Text(name)
-                            .font(.body.weight(.medium))
-                        Spacer()
-                        Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                            .font(.title2)
-                            .foregroundStyle(isOn ? Color.brand : .secondary)
+            List {
+                Section {
+                    ForEach($viewModel.detected) { $detection in
+                        row(for: $detection)
                     }
-                    .contentShape(.rect)
+                } footer: {
+                    Text("Tap an item to fix its name or amount. Pantry remembers your fixes for next time.")
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(isOn ? .isSelected : [])
             }
+            .sheet(item: $editing) { editing in
+                if let index = viewModel.detected.firstIndex(where: { $0.id == editing.id }) {
+                    let detection = viewModel.detected[index]
+                    IngredientEditor(title: "Fix ingredient", name: detection.name,
+                                     quantity: detection.quantity, unit: detection.unit) { name, quantity, unit in
+                        let name = IngredientName.normalize(name)
+                        guard !name.isEmpty else { return false }
+                        viewModel.detected[index].name = name
+                        viewModel.detected[index].quantity = quantity
+                        viewModel.detected[index].unit = unit
+                        viewModel.detected[index].isSelected = true
+                        return true
+                    }
+                }
+            }
+        }
+    }
+
+    private func row(for detection: Binding<Detection>) -> some View {
+        let item = detection.wrappedValue
+        return HStack(spacing: 14) {
+            Button {
+                editing = item
+            } label: {
+                HStack(spacing: 14) {
+                    Thumbnail(photo: .ingredient(item.name, category: IngredientCatalog.all.first { $0.name == item.name }?.category ?? .other),
+                              size: 44)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.name)
+                            .font(.body.weight(.semibold))
+                        Text(QuantityUnit.text(item.quantity, item.unit) ?? "Add amount")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Fix name or amount")
+            Button(item.isSelected ? "Don't add \(item.name)" : "Add \(item.name)",
+                   systemImage: item.isSelected ? "checkmark.circle.fill" : "circle") {
+                detection.wrappedValue.isSelected.toggle()
+            }
+            .labelStyle(.iconOnly)
+            .font(.title2)
+            .foregroundStyle(item.isSelected ? Color.brand : .secondary)
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(item.isSelected ? .isSelected : [])
         }
     }
 }
