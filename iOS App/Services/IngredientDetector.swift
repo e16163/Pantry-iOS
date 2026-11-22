@@ -106,7 +106,7 @@ struct IngredientDetector {
         guard CGImageDestinationFinalize(destination) else { return [] }
         var url = RecipeArt.server.appending(path: "scan")
         if !hints.isEmpty { url.append(queryItems: [URLQueryItem(name: "hints", value: hints.joined(separator: "; "))]) }
-        var request = URLRequest(url: url, timeoutInterval: 20)
+        var request = URLRequest(url: url, timeoutInterval: 30)
         request.httpMethod = "POST"
         request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await URLSession.shared.upload(for: request, from: jpeg as Data)

@@ -54,12 +54,7 @@ async function scan(request, env) {
   let base64 = "";
   for (let i = 0; i < photo.length; i += 0x8000) base64 += String.fromCharCode(...photo.subarray(i, i + 0x8000));
 
-  const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
-    {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_KEY },
-      body: JSON.stringify({
+  const body = JSON.stringify({
         contents: [{ parts: [
           { text: hints ? `${SCAN_PROMPT} This user has corrected past scans: ${hints}.` : SCAN_PROMPT },
           { inline_data: { mime_type: "image/jpeg", data: btoa(base64) } },
@@ -76,9 +71,21 @@ async function scan(request, env) {
             required: ["items"],
           },
         },
-      }),
-    });
-  if (!response.ok) throw new Error(`Gemini ${response.status}: ${(await response.text()).slice(0, 300)}`);
-  const result = await response.json();
-  return new Response(result.candidates[0].content.parts[0].text, { headers: { "content-type": "application/json" } });
+      });
+  // Flash-Lite is faster and less often overloaded; Flash is the backup. Each gets 12 s so the app isn't left waiting.
+  let error;
+  for (const model of ["gemini-flash-lite-latest", "gemini-flash-latest"]) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        { method: "POST", body, signal: AbortSignal.timeout(12_000),
+          headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_KEY } });
+      if (!response.ok) throw new Error(`${model} ${response.status}: ${(await response.text()).slice(0, 300)}`);
+      const result = await response.json();
+      return new Response(result.candidates[0].content.parts[0].text, { headers: { "content-type": "application/json" } });
+    } catch (e) {
+      error = e;
+    }
+  }
+  throw error;
 }
