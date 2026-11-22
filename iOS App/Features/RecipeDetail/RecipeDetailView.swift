@@ -13,7 +13,7 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 RecipePicture(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients)
-                    .frame(height: 300)
+                    .frame(height: 360)  // ~60 pt sits under the status bar, so the dish shows whole below it
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
                         .font(.title.weight(.heavy))
@@ -21,6 +21,10 @@ struct RecipeDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     RecipeMeta(minutes: viewModel.recipe.minutes, difficulty: viewModel.recipe.difficulty,
                                ingredientCount: viewModel.recipe.ingredients.count)
+                    // Pexels' API terms ask for a visible link back.
+                    Link("Photos from Pexels", destination: URL(string: "https://www.pexels.com")!)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(Spacing.page)
                 .padding(.top, 4)

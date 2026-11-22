@@ -1,5 +1,5 @@
 // Pantry's free backend on Cloudflare Workers.
-//   GET  /photo?title=Garlic%20Butter%20Steak  -> a JPEG of the dish, made once and then served from KV
+//   GET  /photo?title=Garlic%20Butter%20Steak  -> redirect to a real Pexels photo, else an AI-made JPEG kept in KV
 //   POST /scan?hints=... (JPEG body; hints are the user's past fixes) -> {"items":[{"name":"egg","count":6}]}
 //   POST /recipes {"ingredients":["egg"],"maxMinutes":30,"excluding":["Omelette"]} -> {"recipes":[...3 recipes]}
 // Deploy: npx wrangler deploy (from this folder)
@@ -32,6 +32,24 @@ async function photo(url, env) {
   const title = (url.searchParams.get("title") ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
   if (!title) return new Response("Missing title", { status: 400 });
   const headers = { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" };
+  // A real photo from Pexels when there's one: "garlic butter steak", else "butter steak", then "steak".
+  if (env.PEXELS_KEY) {
+    const redirect = (to) => new Response(null, { status: 302, headers: { location: to, "cache-control": headers["cache-control"] } });
+    const known = await env.PHOTOS.get(`pexels:${title}`);
+    if (known) return redirect(known);
+    const words = title.split(" ");
+    for (let i = 0; i < Math.min(words.length, 3); i++) {
+      const search = await fetch(`https://api.pexels.com/v1/search?per_page=1&orientation=landscape&query=${
+        encodeURIComponent(words.slice(i).join(" ") + " food")}`, { headers: { authorization: env.PEXELS_KEY } });
+      const found = search.ok ? (await search.json()).photos?.[0]?.src.landscape : null;
+      if (found) {
+        await env.PHOTOS.put(`pexels:${title}`, found);
+        return redirect(found);
+      }
+    }
+  }
+  // The app has its own picture for this dish and only wants a real photo.
+  if (url.searchParams.has("real")) return new Response("No real photo", { status: 404 });
   const saved = await env.PHOTOS.get(title, "arrayBuffer");
   if (saved) return new Response(saved, { headers });
 
@@ -100,7 +118,49 @@ async function recipes(request, env) {
   return Response.json({ recipes: found });
 }
 
+const RECIPE_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    minutes: { type: "integer" },
+    difficulty: { type: "string", enum: ["Easy", "Medium", "Hard"] },
+    ingredients: { type: "array", items: { type: "string" } },
+    amounts: { type: "array", items: { type: "string" } },
+    steps: { type: "array", items: { type: "string" } },
+  },
+  required: ["title", "minutes", "difficulty", "ingredients", "amounts", "steps"],
+  additionalProperties: false,
+};
+
+// Groq (free, ~1 s) first; once its free daily limit is used up, or without a key, Gemini (~5 s).
 async function oneRecipe(env, prompt) {
+  if (env.GROQ_KEY) {
+    try {
+      return { ...(await groq(env, prompt)), by: "groq" };
+    } catch (error) {
+      console.log(String(error));
+    }
+  }
+  return { ...(await geminiRecipe(env, prompt)), by: "gemini" };
+}
+
+async function groq(env, prompt) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    signal: AbortSignal.timeout(6_000),
+    headers: { "content-type": "application/json", authorization: `Bearer ${env.GROQ_KEY}` },
+    body: JSON.stringify({
+      model: "openai/gpt-oss-120b",
+      reasoning_effort: "low",
+      messages: [{ role: "system", content: RECIPE_RULES }, { role: "user", content: prompt }],
+      response_format: { type: "json_schema", json_schema: { name: "recipe", strict: true, schema: RECIPE_SCHEMA } },
+    }),
+  });
+  if (!response.ok) throw new Error(`groq ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  return JSON.parse((await response.json()).choices[0].message.content);
+}
+
+async function geminiRecipe(env, prompt) {
   const text = await gemini(env, {
     systemInstruction: { parts: [{ text: RECIPE_RULES }] },
     contents: [{ parts: [{ text: prompt }] }],

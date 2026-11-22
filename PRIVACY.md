@@ -18,8 +18,8 @@ Deleting the app deletes all of this.
 ## What goes online
 
 - **Photos you scan** are sent to Google's Gemini AI through our server on Cloudflare to find the ingredients in them. We don't store them. Google may keep and review them to improve its services, under [Google's terms](https://ai.google.dev/gemini-api/terms). Without a connection, the photo is read on your iPhone instead.
-- **Your ingredient list** is sent to Google's Gemini AI through our server on Cloudflare when you ask for recipes, so it can write them. Without a connection, Apple Intelligence writes them on your iPhone instead.
-- **Recipe names** are sent to our server on Cloudflare to make a picture of each dish. Pictures are stored and shared with everyone who sees the same recipe. Nothing about you is sent with them.
+- **Your ingredient list** is sent to Groq or Google's Gemini AI through our server on Cloudflare when you ask for recipes, so they can write them. Without a connection, Apple Intelligence writes them on your iPhone instead.
+- **Recipe names** are sent to our server on Cloudflare, which looks up a matching photo on Pexels or makes a picture of the dish. Pictures are stored and shared with everyone who sees the same recipe. Nothing about you is sent with them.
 
 ## Camera and photos
 
