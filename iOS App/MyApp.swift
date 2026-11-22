@@ -7,6 +7,11 @@ enum AppData {
 }
 
 @main struct MyApp: App {
+    init() {
+        // Dish pictures are about 0.5 MB; the default cache is too small to keep them, so each would download again.
+        URLCache.shared = URLCache(memoryCapacity: 50_000_000, diskCapacity: 300_000_000)
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView(context: AppData.container.mainContext)

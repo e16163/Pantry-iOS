@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import FoundationModels
+import ImageIO
 import Vision
 
 @Generable
@@ -35,13 +36,16 @@ struct Detection: Identifiable, Equatable {
     }
 }
 
-/// Spots ingredients in a photo: Apple Intelligence reads it (with counts) on iOS 27, and anywhere that can't
-/// (iOS 26, older phones, the simulator) Vision's built-in object labels are matched to the ingredient catalog.
+/// Spots ingredients in a photo: Gemini reads it (with counts) through Pantry's Worker; offline, or once the free
+/// daily limit is used up, Apple Intelligence reads it on iOS 27, and Vision's built-in object labels matched to
+/// the ingredient catalog always add whatever they find.
 struct IngredientDetector {
     private let session: LanguageModelSession
+    private let hints: [String]
 
     /// `hints` are the user's past fixes, so the model uses their names for things.
     init(hints: [String] = []) {
+        self.hints = hints
         let fixes = hints.isEmpty ? "" : " This user has corrected past scans: \(hints.joined(separator: "; "))."
         session = LanguageModelSession(instructions: """
             You list the food ingredients you can see in a photo of a fridge, pantry, or kitchen counter. \
@@ -64,8 +68,8 @@ struct IngredientDetector {
     }
 
     func ingredients(in image: CGImage) async throws -> [DetectedItem] {
-        var modelItems: [DetectedItem] = []
-        if #available(iOS 27, macOS 27, visionOS 27, *), Self.modelCanSee {
+        var modelItems = (try? await onlineIngredients(in: image)) ?? []
+        if modelItems.isEmpty, #available(iOS 27, macOS 27, visionOS 27, *), Self.modelCanSee {
             modelItems = (try? await modelIngredients(in: image)) ?? []
         }
         // Vision runs too, even with Apple Intelligence, to catch items the model skipped.
@@ -94,6 +98,26 @@ struct IngredientDetector {
     ]
 
     private static let known = Set(IngredientCatalog.all.map(\.name))
+
+    private func onlineIngredients(in image: CGImage) async throws -> [DetectedItem] {
+        let jpeg = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(jpeg, "public.jpeg" as CFString, 1, nil) else { return [] }
+        CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: 0.7] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { return [] }
+        var url = RecipeArt.server.appending(path: "scan")
+        if !hints.isEmpty { url.append(queryItems: [URLQueryItem(name: "hints", value: hints.joined(separator: "; "))]) }
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        let (data, response) = try await URLSession.shared.upload(for: request, from: jpeg as Data)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
+        return try JSONDecoder().decode(OnlineScan.self, from: data).items.map { DetectedItem(name: $0.name, count: $0.count) }
+    }
+
+    private struct OnlineScan: Decodable {
+        struct Item: Decodable { let name: String; let count: Int }
+        let items: [Item]
+    }
 
     @available(iOS 27, macOS 27, visionOS 27, *)
     private func modelIngredients(in image: CGImage) async throws -> [DetectedItem] {

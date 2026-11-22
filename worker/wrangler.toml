@@ -1,0 +1,13 @@
+name = "pantry"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[ai]
+binding = "AI"
+
+# Every dish picture is made once and kept here for all users.
+[[kv_namespaces]]
+binding = "PHOTOS"
+id = "3c7a90fa08594d978d294f1047a2c805"
+
+# GEMINI_KEY is a secret: npx wrangler secret put GEMINI_KEY

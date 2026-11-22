@@ -6,8 +6,16 @@ import AppKit
 #endif
 
 /// Picks the closest photo for any recipe title, including ones Apple Intelligence just wrote, from the
-/// dish photo library listed in `dish_photos.json` (made on a Mac by tools/generate-dish-photos.py).
+/// dish photo library listed in `dish_photos.json`, and gives each title its own picture made online.
 enum RecipeArt {
+    /// Pantry's free Cloudflare Worker (worker/ in this repo).
+    static let server = URL(string: "https://pantry.supersaladstinger.workers.dev")!
+
+    /// A picture of this exact dish, made the first time anyone asks and stored for everyone after that.
+    static func onlinePhoto(title: String) -> URL {
+        server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)])
+    }
+
     struct Dish: Decodable {
         let photo: String
         /// Words a title is matched against, like "quesadilla quesadillas".
@@ -115,6 +123,26 @@ struct PhotoLibrary {
         chinese japanese indian mexican italian greek french vietnamese spanish american southern moroccan \
         mediterranean
         """))
+}
+
+/// The recipe's own picture from the Worker. Until it arrives (or with no connection, or once the free daily
+/// limit is used up) the closest bundled dish photo shows, else the recipe's ingredient drawings.
+struct RecipePicture: View {
+    let title: String
+    let ingredients: [String]
+
+    var body: some View {
+        AsyncImage(url: RecipeArt.onlinePhoto(title: title)) { phase in
+            if let image = phase.image {
+                Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
+            } else if let photo = RecipeArt.photo(title: title) {
+                FoodPhoto(name: photo)
+            } else {
+                IngredientMosaic(ingredients: ingredients)
+            }
+        }
+        .accessibilityHidden(true)
+    }
 }
 
 /// A photo from the asset catalog filling its frame, falling back to the first of `fallbacks` that exists and
