@@ -139,15 +139,17 @@ struct SuggestView: View {
                 InfoBanner(systemImage: "sparkles", title: "Apple Intelligence is writing new recipes for you",
                            message: "They'll appear at the top in a moment. Start with these meanwhile.")
             }
+            // At accessibility text sizes, side-scrolling cards get too cramped, so only the list shows.
+            let shelves = typeSize.isAccessibilitySize ? [] : viewModel.shelves
+            ForEach(shelves, id: \.title) { shelf in
+                shelfRow(shelf.title, shelf.recipes)
+            }
+            if !shelves.isEmpty {
+                SectionHeader(title: "All recipes").padding(.top, 4)
+            }
             ForEach(Array(viewModel.visibleRecipes.enumerated()), id: \.offset) { _, recipe in
-                NavigationLink {
-                    RecipeDetailView(viewModel: viewModel.detailViewModel(for: recipe))
-                } label: {
-                    RecipeCard(title: recipe.title, minutes: recipe.minutes, difficulty: recipe.difficulty,
-                               ingredients: recipe.ingredients, onHandCount: viewModel.onHandCount(for: recipe))
-                }
-                .buttonStyle(.plain)
-                .padding(.bottom, 12)
+                card(recipe)
+                    .padding(.bottom, 12)
             }
             if viewModel.hasMore {
                 Button {
@@ -165,6 +167,12 @@ struct SuggestView: View {
                 }
                 .buttonStyle(.primary)
                 .disabled(viewModel.isLoadingMore)
+                // Reaching the bottom loads more on its own, again whenever a search finishes or new recipes
+                // land while it's still in view. A load that adds nothing stops it; the button is the retry.
+                .task(id: "\(viewModel.recipes.count) \(viewModel.isGenerating)") {
+                    guard !viewModel.isLoadingMore, !viewModel.isGenerating else { return }
+                    Task { await viewModel.loadMore() }  // unstructured, so scrolling away doesn't cancel the model call
+                }
             } else {
                 Text("That's every recipe that fits your pantry right now.")
                     .font(.footnote)
@@ -172,6 +180,37 @@ struct SuggestView: View {
                     .frame(maxWidth: .infinity)
             }
         }
+    }
+
+    private func card(_ recipe: RecipeSuggestion) -> some View {
+        NavigationLink {
+            RecipeDetailView(viewModel: viewModel.detailViewModel(for: recipe))
+        } label: {
+            RecipeCard(title: recipe.title, minutes: recipe.minutes, difficulty: recipe.difficulty,
+                       ingredients: recipe.ingredients, onHandCount: viewModel.onHandCount(for: recipe))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// A titled row of cards that swipes sideways and runs edge to edge, like a delivery app's shelves.
+    private func shelfRow(_ title: String, _ recipes: [RecipeSuggestion]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: title)
+            ScrollView(.horizontal) {
+                LazyHStack(alignment: .top, spacing: 12) {
+                    ForEach(Array(recipes.enumerated()), id: \.offset) { _, recipe in
+                        card(recipe)
+                            .containerRelativeFrame(.horizontal) { width, _ in width * 0.78 }
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.viewAligned)
+            .contentMargins(.horizontal, Spacing.page, for: .scrollContent)
+            .padding(.horizontal, -Spacing.page)
+        }
+        .padding(.bottom, 16)
     }
 }
 

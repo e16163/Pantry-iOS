@@ -81,3 +81,23 @@ struct SuggestViewModelTests {
         #expect(reason.contains("built-in recipe book"))
     }
 }
+
+extension SuggestViewModelTests {
+    @MainActor @Test func shelvesGroupReadyAndQuickRecipes() async {
+        PantryViewModel.sample.forEach(pantry.add(suggestion:))
+        suggest.refreshPantry()
+        suggest.maxMinutes = nil
+        await suggest.generate()
+        let titles = suggest.shelves.flatMap { $0.recipes.map(\.title) }
+        #expect(Set(titles).count == titles.count)  // no recipe in two rows
+        for shelf in suggest.shelves {
+            #expect(shelf.recipes.count >= 2)
+            if shelf.title == "Ready in 15 min" { #expect(shelf.recipes.allSatisfy { $0.minutes <= 15 }) }
+            if shelf.title == "You have everything" {
+                #expect(shelf.recipes.allSatisfy { suggest.onHandCount(for: $0) >= $0.ingredients.count })
+            }
+        }
+        suggest.maxMinutes = 15
+        #expect(!suggest.shelves.contains { $0.title == "Ready in 15 min" })
+    }
+}
