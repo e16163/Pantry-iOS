@@ -68,16 +68,17 @@ struct IngredientDetector {
     }
 
     func ingredients(in image: CGImage) async throws -> [DetectedItem] {
+        // Vision runs alongside, to catch items the model skipped.
+        // Needs a real device: the simulator can't run Vision's classifier.
+        async let visionLabels = try? ClassifyImageRequest().perform(on: image)
+            .filter { $0.confidence >= 0.05 }
+            .sorted { $0.confidence > $1.confidence }
+            .map(\.identifier)
         var modelItems = (try? await onlineIngredients(in: image)) ?? []
         if modelItems.isEmpty, #available(iOS 27, macOS 27, visionOS 27, *), Self.modelCanSee {
             modelItems = (try? await modelIngredients(in: image)) ?? []
         }
-        // Vision runs too, even with Apple Intelligence, to catch items the model skipped.
-        // Needs a real device: the simulator can't run Vision's classifier.
-        let labels = try? await ClassifyImageRequest().perform(on: image)
-            .filter { $0.confidence >= 0.05 }
-            .sorted { $0.confidence > $1.confidence }
-            .map(\.identifier)
+        let labels = await visionLabels
         if modelItems.isEmpty && labels == nil { throw CocoaError(.fileReadCorruptFile) }
         return modelItems + Self.catalogNames(fromLabels: labels ?? []).map { DetectedItem(name: $0, count: 0) }
     }
@@ -106,7 +107,7 @@ struct IngredientDetector {
         guard CGImageDestinationFinalize(destination) else { return [] }
         var url = RecipeArt.server.appending(path: "scan")
         if !hints.isEmpty { url.append(queryItems: [URLQueryItem(name: "hints", value: hints.joined(separator: "; "))]) }
-        var request = URLRequest(url: url, timeoutInterval: 30)
+        var request = URLRequest(url: url, timeoutInterval: 15)
         request.httpMethod = "POST"
         request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await URLSession.shared.upload(for: request, from: jpeg as Data)

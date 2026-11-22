@@ -72,20 +72,20 @@ async function scan(request, env) {
           },
         },
       });
-  // Flash-Lite is faster and less often overloaded; Flash is the backup. Each gets 12 s so the app isn't left waiting.
-  let error;
-  for (const model of ["gemini-flash-lite-latest", "gemini-flash-latest"]) {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        { method: "POST", body, signal: AbortSignal.timeout(12_000),
-          headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_KEY } });
-      if (!response.ok) throw new Error(`${model} ${response.status}: ${(await response.text()).slice(0, 300)}`);
-      const result = await response.json();
-      return new Response(result.candidates[0].content.parts[0].text, { headers: { "content-type": "application/json" } });
-    } catch (e) {
-      error = e;
-    }
-  }
-  throw error;
+  const ask = async (model) => {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      { method: "POST", body, signal: AbortSignal.timeout(8_000),
+        headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_KEY } });
+    if (!response.ok) throw new Error(`${model} ${response.status}: ${(await response.text()).slice(0, 300)}`);
+    return (await response.json()).candidates[0].content.parts[0].text;
+  };
+  // Flash-Lite usually answers in about 1 s. When Google is overloaded it can hang, so if it hasn't answered
+  // in 2.5 s Flash is asked too, and whichever answers first wins.
+  let done = false;
+  const lite = ask("gemini-flash-lite-latest").finally(() => { done = true; });
+  const backup = new Promise((resolve) => setTimeout(resolve, 2_500))
+    .then(() => (done ? lite : ask("gemini-flash-latest")));
+  const text = await Promise.any([lite, backup]);
+  return new Response(text, { headers: { "content-type": "application/json" } });
 }
