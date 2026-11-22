@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-breakfast-hash.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

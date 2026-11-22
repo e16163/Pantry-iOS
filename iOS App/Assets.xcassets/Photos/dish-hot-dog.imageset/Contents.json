@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-hot-dog.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

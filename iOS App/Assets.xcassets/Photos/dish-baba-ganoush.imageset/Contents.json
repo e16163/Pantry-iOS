@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-baba-ganoush.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-mac-cheese.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

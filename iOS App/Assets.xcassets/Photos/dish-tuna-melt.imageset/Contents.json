@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-tuna-melt.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

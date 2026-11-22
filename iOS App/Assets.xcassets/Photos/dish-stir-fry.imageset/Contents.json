@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-stir-fry.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

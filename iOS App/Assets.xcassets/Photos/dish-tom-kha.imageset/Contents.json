@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-tom-kha.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

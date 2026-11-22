@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-chicken-parm.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

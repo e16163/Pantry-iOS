@@ -73,5 +73,420 @@
   "photo": "dish-oatmeal",
   "words": "oatmeal porridge oats",
   "look": "A bowl of oatmeal topped with sliced banana, berries and honey, top-down."
+ },
+ {
+  "photo": "dish-scrambled-eggs",
+  "words": "scrambled egg",
+  "look": "Soft creamy scrambled eggs on a slice of buttered toast, chives on top, white plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-garlic-pasta",
+  "words": "garlic butter pasta garlic pasta aglio",
+  "look": "Spaghetti tossed in garlic butter with parsley and chili flakes in a shallow bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-pesto-pasta",
+  "words": "pesto",
+  "look": "Penne in bright green basil pesto with pine nuts and parmesan shavings in a white bowl, top-down."
+ },
+ {
+  "photo": "dish-mushroom-pasta",
+  "words": "mushroom pasta mushroom fettuccine",
+  "look": "Fettuccine in a creamy mushroom sauce with thyme and black pepper in a shallow bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-mac-cheese",
+  "words": "mac and cheese mac   cheese macaroni",
+  "look": "Creamy stovetop macaroni and cheese in a small pot with a wooden spoon, cheese pulling, 45-degree angle."
+ },
+ {
+  "photo": "dish-stir-fry",
+  "words": "chicken stir-fry chicken   broccoli chicken and broccoli",
+  "look": "Chicken and broccoli stir-fry with glossy sauce and sesame seeds in a dark wok, 45-degree angle."
+ },
+ {
+  "photo": "dish-quesadilla",
+  "words": "quesadilla",
+  "look": "A golden chicken and cheese quesadilla cut into wedges, salsa and sour cream on the side, top-down."
+ },
+ {
+  "photo": "dish-avocado-toast",
+  "words": "avocado toast",
+  "look": "Avocado toast on sourdough topped with a fried egg and chili flakes, white plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-tomato-soup",
+  "words": "tomato soup",
+  "look": "A bowl of smooth tomato soup with a swirl of cream and basil, grilled bread on the side, top-down."
+ },
+ {
+  "photo": "dish-lentil-soup",
+  "words": "lentil soup dal soup",
+  "look": "A rustic bowl of lentil soup with carrots and a lemon wedge, crusty bread beside it, 45-degree angle."
+ },
+ {
+  "photo": "dish-chickpea-curry",
+  "words": "chickpea curry chana masala",
+  "look": "Chickpea curry in a red-orange sauce with rice and cilantro in a wide bowl, top-down."
+ },
+ {
+  "photo": "dish-butter-chicken",
+  "words": "butter chicken chicken tikka",
+  "look": "Butter chicken in a creamy orange sauce with naan and basmati rice, top-down."
+ },
+ {
+  "photo": "dish-french-toast",
+  "words": "french toast",
+  "look": "A stack of cinnamon French toast with powdered sugar, berries and maple syrup, 45-degree angle."
+ },
+ {
+  "photo": "dish-burger",
+  "words": "burger cheeseburger",
+  "look": "A classic cheeseburger with lettuce, tomato and melted cheddar on a sesame bun, fries beside it, eye level."
+ },
+ {
+  "photo": "dish-blt",
+  "words": "blt bacon sandwich",
+  "look": "A BLT sandwich on toasted bread cut in half, crispy bacon visible, on a wooden board, 45-degree angle."
+ },
+ {
+  "photo": "dish-pizza",
+  "words": "pizza margherita",
+  "look": "A margherita pizza with fresh mozzarella, basil and blistered crust on a wooden peel, top-down."
+ },
+ {
+  "photo": "dish-chicken-parm",
+  "words": "chicken parmesan chicken parm",
+  "look": "Breaded chicken parmesan with melted mozzarella and marinara over spaghetti, 45-degree angle."
+ },
+ {
+  "photo": "dish-burrito-bowl",
+  "words": "burrito bowl burrito",
+  "look": "A burrito bowl with seasoned beef, rice, black beans, corn, pico de gallo and lime, top-down."
+ },
+ {
+  "photo": "dish-noodles",
+  "words": "sesame noodles peanut noodles lo mein yakisoba",
+  "look": "Stir-fried noodles with vegetables, sesame seeds and green onions in a bowl with chopsticks, 45-degree angle."
+ },
+ {
+  "photo": "dish-pad-thai",
+  "words": "pad thai",
+  "look": "Pad thai with shrimp, crushed peanuts, bean sprouts and a lime wedge on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-beef-broccoli",
+  "words": "beef and broccoli beef   broccoli",
+  "look": "Beef and broccoli in a glossy brown sauce over white rice in a bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-shakshuka",
+  "words": "shakshuka",
+  "look": "Shakshuka in a cast-iron pan: eggs poached in spiced tomato sauce with feta and parsley, top-down."
+ },
+ {
+  "photo": "dish-fajitas",
+  "words": "fajita",
+  "look": "Sizzling shrimp fajitas with peppers and onions in a cast-iron skillet, tortillas on the side, 45-degree angle."
+ },
+ {
+  "photo": "dish-loaded-potato",
+  "words": "baked potato loaded potato",
+  "look": "A loaded baked potato with sour cream, cheddar, bacon bits and chives on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-guacamole",
+  "words": "guacamole",
+  "look": "Chunky guacamole in a stone bowl with tortilla chips and lime around it, top-down."
+ },
+ {
+  "photo": "dish-tuna-melt",
+  "words": "tuna melt",
+  "look": "An open-faced tuna melt with bubbling cheddar on toasted bread, 45-degree angle."
+ },
+ {
+  "photo": "dish-caprese",
+  "words": "caprese",
+  "look": "Caprese salad: alternating tomato and mozzarella slices with basil and olive oil on a white platter, top-down."
+ },
+ {
+  "photo": "dish-sheet-pan",
+  "words": "sheet pan",
+  "look": "Sheet pan roasted sausage with peppers, onions and potatoes on a baking tray, top-down."
+ },
+ {
+  "photo": "dish-teriyaki-bowl",
+  "words": "teriyaki",
+  "look": "Teriyaki tofu cubes over rice with broccoli and sesame seeds in a bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-parfait",
+  "words": "parfait",
+  "look": "A yogurt parfait in a glass with granola and mixed berries, eye level."
+ },
+ {
+  "photo": "dish-pb-toast",
+  "words": "peanut butter",
+  "look": "Peanut butter toast topped with banana slices and a drizzle of honey on a plate, top-down."
+ },
+ {
+  "photo": "dish-huevos-rancheros",
+  "words": "huevos rancheros",
+  "look": "Huevos rancheros: fried eggs on tortillas with ranchero sauce, beans and avocado, top-down."
+ },
+ {
+  "photo": "dish-chilaquiles",
+  "words": "chilaquiles",
+  "look": "Chilaquiles rojos with red salsa, a fried egg, crema, queso fresco and onion in a skillet, top-down."
+ },
+ {
+  "photo": "dish-street-corn",
+  "words": "elote street corn",
+  "look": "Grilled Mexican street corn on the cob with mayo, cotija, chili powder and lime, 45-degree angle."
+ },
+ {
+  "photo": "dish-enchiladas",
+  "words": "enchilada",
+  "look": "Cheese enchiladas in red sauce with melted cheese and cilantro in a baking dish, top-down."
+ },
+ {
+  "photo": "dish-risotto",
+  "words": "risotto",
+  "look": "Creamy lemon parmesan risotto in a shallow bowl with parmesan shavings and lemon zest, 45-degree angle."
+ },
+ {
+  "photo": "dish-bruschetta",
+  "words": "bruschetta",
+  "look": "Tomato bruschetta with basil on toasted baguette slices on a wooden board, 45-degree angle."
+ },
+ {
+  "photo": "dish-eggplant-parm",
+  "words": "eggplant parmesan eggplant parm",
+  "look": "Eggplant parmesan with layered marinara and melted mozzarella in a baking dish, a slice lifted out, 45-degree angle."
+ },
+ {
+  "photo": "dish-sausage-peppers",
+  "words": "sausage and peppers sausage   peppers",
+  "look": "Italian sausages with saut\u00e9ed bell peppers and onions in a cast-iron skillet, top-down."
+ },
+ {
+  "photo": "dish-piccata",
+  "words": "piccata",
+  "look": "Chicken piccata with lemon caper butter sauce and parsley on a white plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-breakfast-hash",
+  "words": "hash",
+  "look": "A sausage and potato breakfast hash in a skillet topped with two sunny-side-up eggs, top-down."
+ },
+ {
+  "photo": "dish-biscuits-gravy",
+  "words": "biscuits gravy",
+  "look": "Split buttermilk biscuits smothered in sausage gravy with black pepper on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-meatloaf",
+  "words": "meatloaf",
+  "look": "Slices of glazed meatloaf with mashed potatoes and green beans on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-mapo-tofu",
+  "words": "mapo tofu",
+  "look": "Mapo tofu in a red chili sauce with ground pork and green onions in a bowl, rice beside it, top-down."
+ },
+ {
+  "photo": "dish-tomato-egg",
+  "words": "tomato and egg tomato   egg",
+  "look": "Chinese tomato and egg stir-fry with green onions over rice in a bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-kung-pao",
+  "words": "kung pao",
+  "look": "Kung pao chicken with peanuts, dried chilies and green onions in a wok, 45-degree angle."
+ },
+ {
+  "photo": "dish-sweet-sour",
+  "words": "sweet and sour sweet   sour",
+  "look": "Sweet and sour pork with pineapple and bell peppers in a glossy red sauce on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-oyakodon",
+  "words": "oyakodon",
+  "look": "Oyakodon: chicken and soft egg simmered with onion over rice in a donburi bowl, top-down."
+ },
+ {
+  "photo": "dish-gyudon",
+  "words": "gyudon beef bowl",
+  "look": "Gyudon: thin-sliced simmered beef and onion over rice with pickled ginger in a bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-katsu",
+  "words": "katsu",
+  "look": "Sliced golden chicken katsu with shredded cabbage, rice and katsu sauce on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-shogayaki",
+  "words": "shogayaki ginger pork",
+  "look": "Pork shogayaki: ginger-glazed pork slices with shredded cabbage and rice on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-tamagoyaki",
+  "words": "tamagoyaki",
+  "look": "Sliced tamagoyaki rolled omelette on a rice bowl with green onions, 45-degree angle."
+ },
+ {
+  "photo": "dish-bibimbap",
+  "words": "bibimbap",
+  "look": "Bibimbap in a stone bowl: rice topped with vegetables, beef, a fried egg and gochujang, top-down."
+ },
+ {
+  "photo": "dish-bulgogi",
+  "words": "bulgogi",
+  "look": "Beef bulgogi with sesame seeds and green onions, rice and kimchi on the side, 45-degree angle."
+ },
+ {
+  "photo": "dish-korean-chicken",
+  "words": "korean fried chicken",
+  "look": "Crispy Korean fried chicken glazed in red gochujang sauce with sesame seeds, 45-degree angle."
+ },
+ {
+  "photo": "dish-japchae",
+  "words": "japchae",
+  "look": "Japchae glass noodles with vegetables, beef and sesame seeds on a plate, 45-degree angle."
+ },
+ {
+  "photo": "dish-steamed-egg",
+  "words": "gyeran-jjim steamed egg",
+  "look": "Korean steamed egg puffed up in a small black earthenware pot with green onions, 45-degree angle."
+ },
+ {
+  "photo": "dish-spicy-pork",
+  "words": "spicy pork",
+  "look": "Spicy Korean pork stir-fry in red sauce with onions and green onions, rice on the side, 45-degree angle."
+ },
+ {
+  "photo": "dish-basil-chicken",
+  "words": "basil chicken pad kra pao",
+  "look": "Thai basil chicken with a crispy fried egg over jasmine rice on a plate, top-down."
+ },
+ {
+  "photo": "dish-noodle-salad",
+  "words": "noodle salad bun",
+  "look": "Vietnamese rice noodle salad with herbs, cucumber, carrots, peanuts and nuoc cham in a bowl, top-down."
+ },
+ {
+  "photo": "dish-tom-kha",
+  "words": "tom kha",
+  "look": "Tom kha coconut soup with shrimp, mushrooms, lemongrass and cilantro in a bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-pho",
+  "words": "pho",
+  "look": "A bowl of beef pho with rice noodles, thin beef slices, herbs, bean sprouts and lime, top-down."
+ },
+ {
+  "photo": "dish-aloo-gobi",
+  "words": "aloo gobi",
+  "look": "Aloo gobi: turmeric-spiced potatoes and cauliflower with cilantro in a bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-saag",
+  "words": "saag",
+  "look": "Saag with tofu cubes in a creamy spinach sauce with naan on the side, top-down."
+ },
+ {
+  "photo": "dish-dal",
+  "words": "dal",
+  "look": "Yellow dal tadka with a ghee and cumin drizzle, rice beside it, top-down."
+ },
+ {
+  "photo": "dish-egg-curry",
+  "words": "egg curry",
+  "look": "Egg curry: halved boiled eggs in a spiced tomato-onion gravy with cilantro in a bowl, 45-degree angle."
+ },
+ {
+  "photo": "dish-coconut-curry",
+  "words": "coconut curry shrimp curry",
+  "look": "Coconut shrimp curry in a creamy yellow sauce with rice and lime, top-down."
+ },
+ {
+  "photo": "dish-hummus",
+  "words": "hummus",
+  "look": "A swirl of hummus with olive oil, paprika and chickpeas in a bowl, warm pita beside it, top-down."
+ },
+ {
+  "photo": "dish-shawarma",
+  "words": "shawarma",
+  "look": "Chicken shawarma pitas with tomato, cucumber and garlic sauce on a board, 45-degree angle."
+ },
+ {
+  "photo": "dish-baba-ganoush",
+  "words": "baba ganoush",
+  "look": "Baba ganoush with olive oil, pomegranate seeds and parsley in a bowl, pita on the side, top-down."
+ },
+ {
+  "photo": "dish-tabbouleh",
+  "words": "tabbouleh",
+  "look": "Couscous tabbouleh with parsley, tomato, cucumber and lemon in a bowl, top-down."
+ },
+ {
+  "photo": "dish-ratatouille",
+  "words": "ratatouille",
+  "look": "Ratatouille with zucchini, eggplant and tomato in a cast-iron pan, top-down."
+ },
+ {
+  "photo": "dish-onion-soup",
+  "words": "onion soup",
+  "look": "French onion soup in a crock with a bubbling, browned cheese crust, 45-degree angle."
+ },
+ {
+  "photo": "dish-gratin",
+  "words": "gratin",
+  "look": "Potato gratin in a baking dish with a golden, bubbling top, a portion scooped out, 45-degree angle."
+ },
+ {
+  "photo": "dish-squash-soup",
+  "words": "squash soup pumpkin soup",
+  "look": "Butternut squash soup with a cream swirl and toasted pumpkin seeds in a bowl, top-down."
+ },
+ {
+  "photo": "dish-bean-soup",
+  "words": "black bean soup bean soup",
+  "look": "Smoky black bean soup topped with sour cream, avocado and cilantro in a bowl, top-down."
+ },
+ {
+  "photo": "dish-chowder",
+  "words": "chowder",
+  "look": "Potato corn chowder with bacon bits and chives in a bowl, crackers on the side, 45-degree angle."
+ },
+ {
+  "photo": "dish-cucumber-salad",
+  "words": "cucumber salad",
+  "look": "Smashed cucumber salad with chili oil, garlic and sesame seeds on a plate, top-down."
+ },
+ {
+  "photo": "dish-bread-salad",
+  "words": "bread salad panzanella",
+  "look": "Tomato bread salad with torn toasted bread, basil and red onion in a bowl, top-down."
+ },
+ {
+  "photo": "dish-kale-salad",
+  "words": "kale salad",
+  "look": "Kale and apple salad with walnuts and shaved parmesan in a wide bowl, top-down."
+ },
+ {
+  "photo": "dish-roasted-chickpeas",
+  "words": "roasted chickpeas",
+  "look": "Crispy spiced roasted chickpeas in a small bowl, a few scattered around it, 45-degree angle."
+ },
+ {
+  "photo": "dish-hot-dog",
+  "words": "hot dog",
+  "look": "A grilled hot dog in a bun with mustard and onions, 45-degree angle."
+ },
+ {
+  "photo": "dish-grain-bowl",
+  "words": "grain bowl buddha bowl",
+  "look": "A grain bowl with quinoa, roasted vegetables, chickpeas and tahini, top-down."
  }
 ]

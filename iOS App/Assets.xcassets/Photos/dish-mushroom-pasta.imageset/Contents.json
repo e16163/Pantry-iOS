@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "dish-mushroom-pasta.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
