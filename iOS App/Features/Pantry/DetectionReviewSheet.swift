@@ -78,12 +78,8 @@ struct DetectionReviewSheet: View {
                 editing = item
             } label: {
                 HStack(spacing: 14) {
-                    Text(IngredientEmoji.emoji(for: item.name,
-                                               category: IngredientCatalog.all.first { $0.name == item.name }?.category ?? .other))
-                        .font(.title3)
-                        .frame(width: 44, height: 44)
-                        .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 10))
-                        .accessibilityHidden(true)
+                    Thumbnail(photo: .ingredient(item.name, category: IngredientCatalog.all.first { $0.name == item.name }?.category ?? .other),
+                              size: 44)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name)
                             .font(.body.weight(.semibold))

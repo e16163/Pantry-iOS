@@ -4,38 +4,41 @@ import SwiftUI
 struct SuggestView: View {
     @Bindable var viewModel: SuggestViewModel
 
-    private static let timeChips: [(emoji: String, title: String, minutes: Int?)] = [
-        ("⚡️", "15 min", 15), ("⏱️", "30 min", 30), ("🍲", "1 hour", 60), ("✨", "Any time", nil),
+    private static let timeChips: [(systemImage: String, title: String, minutes: Int?)] = [
+        ("bolt.fill", "15 min", 15), ("timer", "30 min", 30), ("clock", "1 hour", 60), ("infinity", "Any time", nil),
     ]
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("Cooking with ^[\(viewModel.pantryCount) ingredient](inflect: true) from your pantry")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
+                    PageTitle(title: "What's cooking?",
+                              subtitle: "Cooking with ^[\(viewModel.pantryCount) ingredient](inflect: true) from your pantry")
+                        .padding(.horizontal, Spacing.page)
+                        .padding(.top, 8)
                     hero
-                        .padding(.horizontal)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(Self.timeChips, id: \.title) { chip in
-                                Chip(emoji: chip.emoji, title: chip.title, isSelected: viewModel.maxMinutes == chip.minutes) {
-                                    viewModel.maxMinutes = chip.minutes
-                                }
+                        .padding(.horizontal, Spacing.page)
+                    HStack(spacing: 8) {
+                        ForEach(Self.timeChips, id: \.title) { chip in
+                            Chip(systemImage: chip.systemImage, title: chip.title, isSelected: viewModel.maxMinutes == chip.minutes) {
+                                viewModel.maxMinutes = chip.minutes
+                                // Already showing results: search again for the new time instead of just hiding cards.
+                                if !viewModel.recipes.isEmpty { Task { await viewModel.generate() } }
                             }
                         }
-                        .padding(.horizontal)
                     }
+                    .padding(.horizontal, Spacing.page)
                     SectionDivider()
+                        .padding(.top, 8)
                     results
-                        .padding(.horizontal)
+                        .padding(.horizontal, Spacing.page)
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, Spacing.section)
             }
             .navigationTitle("Suggest")
-            .toolbarTitleDisplayMode(.inlineLarge)
+            #if os(iOS)
+            .toolbarVisibility(.hidden, for: .navigationBar)
+            #endif
             .onAppear(perform: viewModel.refreshPantry)
         }
     }
@@ -44,19 +47,20 @@ struct SuggestView: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Dinner from what\nyou've got.")
-                .font(.title.bold())
+                .font(.system(size: 28, weight: .heavy))
+                .tracking(-0.5)
             Text(viewModel.pantryCount == 0
                  ? "Add a few ingredients in the Pantry tab to get started."
                  : "Pick a time and we'll find recipes that use your pantry.")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.8))
+                .foregroundStyle(.white.opacity(0.85))
                 .padding(.trailing, 90)  // keep clear of the pan art
             Button {
                 Task { await viewModel.generate() }
             } label: {
                 HStack(spacing: 8) {
                     if viewModel.isGenerating {
-                        ProgressView().tint(.black)
+                        ProgressView().tint(.white)
                         Text("Finding recipes…")
                     } else {
                         Text("Find recipes")
@@ -64,10 +68,11 @@ struct SuggestView: View {
                     }
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.black)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 11)
-                .background(Color(red: 0.36, green: 0.84, blue: 0.53), in: .capsule)
+                .background(Color.brand, in: .capsule)
+                .environment(\.colorScheme, .light)  // keep the brand green dark enough for white text
             }
             .buttonStyle(.plain)
             .disabled(!viewModel.canGenerate)
@@ -79,8 +84,8 @@ struct SuggestView: View {
         .padding(20)
         .background(alignment: .trailing) {
             ZStack(alignment: .trailing) {
-                Color(red: 0.09, green: 0.15, blue: 0.14)
-                Text("🥘")
+                Color(red: 0.09, green: 0.15, blue: 0.14)  // near-black Pantry green
+                Text("🥘")  // the pan art from the first TestFlight build, kept on request
                     .font(.system(size: 110))
                     .rotationEffect(.degrees(-12))
                     .offset(x: 28, y: 34)
@@ -102,14 +107,14 @@ struct SuggestView: View {
             } description: {
                 Text(message)
             }
-        } else if viewModel.isGenerating && viewModel.recipes.isEmpty {
+        } else if viewModel.isGenerating && viewModel.visibleRecipes.isEmpty {
             SectionHeader(title: "Recipes for you", subtitle: "Checking your pantry…")
             ForEach(0..<2, id: \.self) { _ in
                 RecipeCard(title: "Placeholder recipe name", minutes: 20, difficulty: "Easy",
                            ingredients: ["one", "two", "three"])
                     .redacted(reason: .placeholder)
             }
-        } else if viewModel.recipes.isEmpty {
+        } else if viewModel.visibleRecipes.isEmpty {
             ContentUnavailableView {
                 Label {
                     Text("Ready when you are")
@@ -127,7 +132,11 @@ struct SuggestView: View {
             if let notice = viewModel.fallbackNotice {
                 InfoBanner(systemImage: "book.closed", title: "Showing picks from our recipe book", message: notice)
             }
-            ForEach(Array(viewModel.recipes.enumerated()), id: \.offset) { _, recipe in
+            if viewModel.isGenerating {
+                InfoBanner(systemImage: "sparkles", title: "Apple Intelligence is writing new recipes for you",
+                           message: "They'll appear at the top in a moment. Start with these meanwhile.")
+            }
+            ForEach(Array(viewModel.visibleRecipes.enumerated()), id: \.offset) { _, recipe in
                 NavigationLink {
                     RecipeDetailView(viewModel: viewModel.detailViewModel(for: recipe))
                 } label: {
@@ -135,7 +144,29 @@ struct SuggestView: View {
                                ingredients: recipe.ingredients, onHandCount: viewModel.onHandCount(for: recipe))
                 }
                 .buttonStyle(.plain)
-                .padding(.bottom, 8)
+                .padding(.bottom, 12)
+            }
+            if viewModel.hasMore {
+                Button {
+                    Task { await viewModel.loadMore() }
+                } label: {
+                    HStack(spacing: 8) {
+                        if viewModel.isLoadingMore {
+                            ProgressView()
+                            Text("Cooking up more…")
+                        } else {
+                            Image(systemName: "sparkles")
+                            Text("More recipes")
+                        }
+                    }
+                }
+                .buttonStyle(.primary)
+                .disabled(viewModel.isLoadingMore)
+            } else {
+                Text("That's every recipe that fits your pantry right now.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
             }
         }
     }

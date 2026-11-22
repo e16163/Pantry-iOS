@@ -77,7 +77,6 @@ final class PantryViewModel {
 
     /// Called when the scan menu opens: loads the model while the user lines up the shot.
     func prepareScan() {
-        guard IngredientDetector.unavailableMessage == nil else { return }
         let detector = IngredientDetector(hints: corrections.hints)
         detector.prewarm()
         self.detector = detector
@@ -96,10 +95,6 @@ final class PantryViewModel {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else {
             detectionError = "Couldn't open that photo. Try another one."
-            return
-        }
-        guard #available(iOS 27, macOS 27, visionOS 27, *) else {
-            detectionError = IngredientDetector.unavailableText
             return
         }
         // A session holds its history, so each scan gets a fresh one.

@@ -5,65 +5,70 @@ import SwiftUI
 struct PantryView: View {
     @Bindable var viewModel: PantryViewModel
     @FocusState private var isFieldFocused: Bool
+    @Environment(\.scenePhase) private var scenePhase
     @State private var photoItem: PhotosPickerItem?
     @State private var isPickingPhoto = false
     @State private var isTakingPhoto = false
     @State private var isReviewing = false
-    @State private var unavailableMessage: String?
     @State private var editingItem: PantryItem?
 
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    HStack {
-                        TextField("Add an ingredient", text: $viewModel.newItemName)
-                            .focused($isFieldFocused)
-                            .autocorrectionDisabled()
-                            .submitLabel(.done)
-                            .onSubmit {
-                                viewModel.add()
-                                isFieldFocused = true
-                            }
-                        Button("Add", action: viewModel.add)
-                    }
-                    ForEach(viewModel.suggestions, id: \.self) { name in
-                        Button {
-                            viewModel.add(suggestion: name)
-                        } label: {
-                            Label(name, systemImage: "plus.circle")
+                VStack(alignment: .leading, spacing: 16) {
+                    PageTitle(title: "Your pantry",
+                              subtitle: viewModel.items.isEmpty ? nil : "^[\(viewModel.items.count) ingredient](inflect: true) on hand")
+                    searchField
+                }
+                .plainRow(top: 8, bottom: viewModel.suggestions.isEmpty ? 12 : 4)
+                ForEach(viewModel.suggestions, id: \.self) { name in
+                    Button {
+                        viewModel.add(suggestion: name)
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "plus")
+                                .font(.subheadline.weight(.bold))
+                                .frame(width: 36, height: 36)
+                                .background(Color.fill, in: .circle)
+                            Text(name).font(.body.weight(.medium))
+                            Spacer()
                         }
+                        .contentShape(.rect)
                     }
-                } footer: {
-                    if !viewModel.items.isEmpty {
-                        Text("^[\(viewModel.items.count) ingredient](inflect: true)")
-                    }
+                    .buttonStyle(.plain)
+                    .plainRow(top: 6, bottom: 6)
                 }
                 if viewModel.items.isEmpty {
-                    ContentUnavailableView {
-                        Label {
-                            Text("Your pantry is empty")
-                        } icon: {
-                            Image(.emptyPantry).illustration()
-                        }
-                    } description: {
-                        Text("Add what you have, and we'll suggest recipes you can make.")
-                    } actions: {
-                        Button("Try a sample pantry", action: viewModel.addSample)
-                    }
+                    emptyState
+                        .plainRow(top: 32, bottom: 32)
                 }
                 ForEach(viewModel.sections, id: \.category) { section in
                     Section {
                         ForEach(section.items) { item in
                             row(for: item)
+                                .plainRow(top: 8, bottom: 8)
                         }
                     } header: {
-                        Label(section.category.title, systemImage: section.category.systemImage)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(section.category.title)
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundStyle(Color.primary)
+                            Spacer()
+                            Text("\(section.items.count)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .textCase(nil)
+                        .padding(.top, 4)
+                        .accessibilityAddTraits(.isHeader)
                     }
                 }
             }
+            .listStyle(.plain)
             .sensoryFeedback(.impact(weight: .light), trigger: viewModel.items.count)
-            .animation(.snappy, value: viewModel.recentlyDeleted?.name)
+            .onChange(of: scenePhase) {
+                if scenePhase == .active { viewModel.load() }  // picks up items added with Siri
+            }
             .navigationTitle("Pantry")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
@@ -109,35 +114,66 @@ struct PantryView: View {
                                  onDelete: { viewModel.delete(item) })
             }
             .safeAreaInset(edge: .bottom) { undoToast }
-            .alert("Photo scanning unavailable", isPresented: .constant(unavailableMessage != nil)) {
-                Button("OK") { unavailableMessage = nil }
-            } message: {
-                Text(unavailableMessage ?? "")
-            }
+            .animation(.snappy, value: viewModel.recentlyDeleted?.name)
         }
     }
 }
 
 extension PantryView {
-    /// Always shown, so a phone that can't scan says why instead of hiding the feature.
-    @ViewBuilder
+    /// Gray pill field, like a delivery app's search bar.
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField("Add an ingredient", text: $viewModel.newItemName)
+                .focused($isFieldFocused)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    viewModel.add()
+                    isFieldFocused = true
+                }
+            if !viewModel.newItemName.isEmpty {
+                Button("Add", action: viewModel.add)
+                    .font(.subheadline.weight(.bold))
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 50)
+        .background(Color.fill, in: .capsule)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(.emptyPantry).illustration()
+            Text("Your pantry is empty")
+                .font(.title2.bold())
+            Text("Add what you have, or scan your fridge, and we'll suggest recipes you can make.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Try a sample pantry", action: viewModel.addSample)
+                .buttonStyle(.primary)
+                .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     private var photoButton: some View {
-        if let message = IngredientDetector.unavailableMessage {
-            Button("Scan a photo", systemImage: "camera") { unavailableMessage = message }
-        } else {
-            Menu("Scan a photo", systemImage: "camera") {
-                #if os(iOS)
-                if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                    Button("Take photo", systemImage: "camera") {
-                        viewModel.prepareScan()
-                        isTakingPhoto = true
-                    }
-                }
-                #endif
-                Button("Choose photo", systemImage: "photo.on.rectangle") {
+        Menu("Scan a photo", systemImage: "camera") {
+            #if os(iOS)
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                Button("Take photo", systemImage: "camera") {
                     viewModel.prepareScan()
-                    isPickingPhoto = true
+                    isTakingPhoto = true
                 }
+            }
+            #endif
+            Button("Choose photo", systemImage: "photo.on.rectangle") {
+                viewModel.prepareScan()
+                isPickingPhoto = true
             }
         }
     }
@@ -148,13 +184,9 @@ extension PantryView {
             editingItem = item
         } label: {
             HStack(spacing: 14) {
-                Text(IngredientEmoji.emoji(for: item.name, category: item.category))
-                    .font(.title3)
-                    .frame(width: 44, height: 44)
-                    .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 10))
-                    .accessibilityHidden(true)
+                Thumbnail(photo: .ingredient(item.name, category: item.category))
                 Text(item.name)
-                    .font(.body.weight(.semibold))
+                    .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
                 Spacer(minLength: 8)
                 Group {
@@ -171,7 +203,7 @@ extension PantryView {
                 .font(.footnote.weight(.semibold).monospacedDigit())
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.secondary.opacity(0.12), in: .capsule)
+                .background(Color.fill, in: .capsule)
             }
             .contentShape(.rect)
         }
@@ -203,7 +235,7 @@ extension PantryView {
             .frame(height: 50)
             .foregroundStyle(.background)
             .background(Color.primary, in: .rect(cornerRadius: 12))
-            .padding(.horizontal)
+            .padding(.horizontal, Spacing.page)
             .padding(.bottom, 8)
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .task(id: removed.name) {
@@ -216,6 +248,14 @@ extension PantryView {
     private func review(_ photo: Data) {
         isReviewing = true
         Task { await viewModel.detect(photo: photo) }
+    }
+}
+
+private extension View {
+    /// List row with the page margins, no separator, and the given vertical padding.
+    func plainRow(top: CGFloat, bottom: CGFloat) -> some View {
+        listRowInsets(EdgeInsets(top: top, leading: Spacing.page, bottom: bottom, trailing: Spacing.page))
+            .listRowSeparator(.hidden)
     }
 }
 

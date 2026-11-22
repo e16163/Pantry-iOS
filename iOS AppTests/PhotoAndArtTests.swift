@@ -34,21 +34,25 @@ struct PhotoAndArtTests {
         #expect(RecipeThumbnails.fileName(for: "Mac & Cheese / Deluxe") == "mac---cheese---deluxe.png")
     }
 
-    @Test func recipeArtMatchesTitleBeforeIngredients() {
-        #expect(RecipeArt.emoji(title: "Tomato Pasta", ingredients: ["egg"]) == "🍝")
-        #expect(RecipeArt.emoji(title: "Mystery Dish", ingredients: ["chicken"]) == "🍗")
-        #expect(RecipeArt.emoji(title: "Mystery Dish", ingredients: []) == "🍽️")
+    @Test func visionLabelsKeepOnlyCatalogIngredients() {
+        #expect(IngredientDetector.catalogNames(fromLabels: ["food", "bell_pepper", "eggs", "kitchen", "banana", "cheese", "pepper_veggie", "shellfish"])
+                == ["bell pepper", "egg", "banana", "cheddar cheese", "bell pepper", "shrimp"])
     }
 
-    @Test func recipeArtColorIsStable() {
-        #expect(RecipeArt.colorIndex(title: "Omelette") == RecipeArt.colorIndex(title: "Omelette"))
-        #expect((0..<RecipeArt.palette.count).contains(RecipeArt.colorIndex(title: "Omelette")))
+    @Test func recipeArtOnlyMatchesTheSameDish() {
+        #expect(RecipeArt.photo(title: "Spinach & Cheddar Omelette") == "dish-eggs")
+        #expect(RecipeArt.photo(title: "Tomato Basil Spaghetti") == "dish-pasta")
+        // A look-alike photo would be wrong, so these get none.
+        #expect(RecipeArt.photo(title: "Classic Scrambled Eggs on Toast") == nil)
+        #expect(RecipeArt.photo(title: "Pesto Pasta") == nil)
+        #expect(RecipeArt.photo(title: "Mystery Dish") == nil)
+        #expect(RecipeArt.photo(title: "Egg Curry") == nil)
+        #expect(RecipeArt.photo(title: "Shrimp Fajitas") == nil)
     }
 
-    @Test func ingredientEmojiPrefersLongestMatch() {
-        #expect(IngredientEmoji.emoji(for: "eggplant", category: .produce) == "🍆")
-        #expect(IngredientEmoji.emoji(for: "peanut butter", category: .pantry) == "🥜")
-        #expect(IngredientEmoji.emoji(for: "quinoa", category: .grains) == "🌾")
+    @Test func ingredientPhotoSlugMatchesSlicerScript() {
+        #expect(FoodPhoto.slug("Jalapeño") == "jalapeno")
+        #expect(FoodPhoto.slug("apple cider vinegar") == "apple-cider-vinegar")
     }
 
     @MainActor @Test func savedDeleteRemovesRecipe() throws {

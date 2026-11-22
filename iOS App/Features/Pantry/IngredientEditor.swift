@@ -63,18 +63,15 @@ struct IngredientEditor: View {
             SectionHeader(title: "What is it?")
             HStack(spacing: 14) {
                 let normalized = IngredientName.normalize(name)
-                Text(IngredientEmoji.emoji(for: normalized,
-                                           category: IngredientCatalog.all.first { $0.name == normalized }?.category ?? .other))
-                    .font(.title)
-                    .frame(width: 56, height: 56)
-                    .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 12))
-                    .accessibilityHidden(true)
+                Thumbnail(photo: .ingredient(normalized,
+                                             category: IngredientCatalog.all.first { $0.name == normalized }?.category ?? .other),
+                          size: 56)
                 TextField("Ingredient name", text: $name)
                     .font(.title3.weight(.semibold))
                     .autocorrectionDisabled()
                     .padding(.horizontal, 14)
                     .frame(height: 56)
-                    .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 12))
+                    .background(Color.fill, in: .rect(cornerRadius: 12))
                     .onChange(of: name) { nameTaken = false }
             }
             if nameTaken {
@@ -106,7 +103,7 @@ struct IngredientEditor: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach(QuantityUnit.allCases, id: \.self) { option in
-                        Chip(title: option.rawValue, isSelected: unit == option) { unit = option }
+                        unitPill(option)
                     }
                 }
             }
@@ -122,8 +119,20 @@ struct IngredientEditor: View {
             .labelStyle(.iconOnly)
             .font(.title2.weight(.bold))
             .frame(width: 56, height: 56)
-            .background(Color.secondary.opacity(0.12), in: .circle)
+            .background(Color.fill, in: .circle)
             .buttonStyle(.plain)
+    }
+
+    private func unitPill(_ option: QuantityUnit) -> some View {
+        let isSelected = unit == option
+        return Button(option.rawValue) { unit = option }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .frame(minHeight: 38)
+            .foregroundStyle(isSelected ? AnyShapeStyle(.background) : AnyShapeStyle(.primary))
+            .background(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.fill), in: .capsule)
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func save() {

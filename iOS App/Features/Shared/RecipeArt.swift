@@ -1,110 +1,96 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#else
+import AppKit
+#endif
 
-/// Stand-in food art for recipes (we have no photos): an emoji picked from keywords on a pastel tile.
+/// Picks a dish photo for a recipe from its title, only when the photo shows that same dish.
 enum RecipeArt {
-    /// Checked in order; the first keyword found in the title (then the ingredients) wins.
-    private static let keywords: [(words: [String], emoji: String)] = [
-        (["pancake", "waffle"], "🥞"),
-        (["omelette", "omelet", "scrambled", "egg"], "🍳"),
-        (["pasta", "spaghetti", "penne", "macaroni", "mac and cheese", "noodle"], "🍝"),
-        (["salad"], "🥗"),
-        (["soup", "stew"], "🍲"),
-        (["curry"], "🍛"),
-        (["taco", "quesadilla", "burrito", "tortilla"], "🌮"),
-        (["fried rice", "rice", "bowl"], "🍚"),
-        (["toast", "sandwich", "melt", "grilled cheese", "bread"], "🥪"),
-        (["salmon", "tilapia", "fish", "tuna"], "🐟"),
-        (["shrimp"], "🍤"),
-        (["chicken"], "🍗"),
-        (["beef", "steak", "burger"], "🥩"),
-        (["potato", "fries"], "🥔"),
-        (["yogurt", "parfait", "granola", "oat"], "🥣"),
-        (["banana"], "🍌"),
+    /// Title phrases each photo really shows. No match means no photo, never a look-alike.
+    private static let keywords: [(words: [String], photo: String)] = [
+        (["pancake"], "dish-pancakes"),
+        (["omelette", "omelet", "frittata"], "dish-eggs"),
+        (["spaghetti", "tomato pasta", "marinara"], "dish-pasta"),
+        (["greek salad", "green salad", "garden salad"], "dish-salad"),
+        (["vegetable soup", "veggie soup", "minestrone"], "dish-soup"),
+        (["chicken curry"], "dish-curry"),
+        (["taco"], "dish-tacos"),
+        (["fried rice"], "dish-rice-bowl"),
+        (["grilled cheese"], "dish-sandwich"),
+        (["salmon"], "dish-salmon"),
+        (["garlic shrimp", "shrimp scampi", "butter shrimp"], "dish-shrimp"),
+        (["roast chicken", "roasted chicken", "lemon garlic chicken", "chicken thigh"], "dish-chicken"),
+        (["steak"], "dish-steak"),
+        (["roasted potato", "roast potato"], "dish-potatoes"),
+        (["oatmeal", "porridge", "overnight oats"], "dish-oatmeal"),
     ]
 
-    static func emoji(title: String, ingredients: [String]) -> String {
-        for text in [title.lowercased(), ingredients.joined(separator: " ").lowercased()] {
-            if let match = keywords.first(where: { $0.words.contains(where: text.contains) }) {
-                return match.emoji
-            }
-        }
-        return "🍽️"
-    }
-
-    static let palette: [Color] = [
-        Color(red: 1.00, green: 0.93, blue: 0.85),  // peach
-        Color(red: 0.88, green: 0.96, blue: 0.89),  // mint
-        Color(red: 1.00, green: 0.96, blue: 0.80),  // butter
-        Color(red: 0.90, green: 0.92, blue: 1.00),  // periwinkle
-        Color(red: 1.00, green: 0.89, blue: 0.91),  // rose
-        Color(red: 0.92, green: 0.90, blue: 0.98),  // lavender
-    ]
-
-    /// Same title, same color on every launch (`hashValue` is reseeded per launch, so it's not used).
-    static func colorIndex(title: String) -> Int {
-        title.unicodeScalars.reduce(0) { $0 + Int($1.value) } % palette.count
+    static func photo(title: String) -> String? {
+        let title = title.lowercased()
+        return keywords.first { $0.words.contains(where: title.contains) }?.photo
     }
 }
 
-/// The emoji on its pastel background, sized by the caller; replaced by a generated illustration once one is ready.
-struct RecipeArtTile: View {
-    let title: String
-    let ingredients: [String]
-    var emojiSize: CGFloat = 64
-
-    @State private var thumbnail: CGImage?
-    @Environment(\.redactionReasons) private var redactionReasons
+/// A photo from the asset catalog filling its frame, falling back to the first of `fallbacks` that exists and
+/// then a gray tile, so the app still looks finished before every photo has been added.
+struct FoodPhoto: View {
+    let name: String
+    var fallbacks: [String] = []
 
     var body: some View {
-        RecipeArt.palette[RecipeArt.colorIndex(title: title)]
+        Color.secondary.opacity(0.12)
             .overlay {
-                if let thumbnail {
-                    Image(decorative: thumbnail, scale: 1)
-                        .resizable()
-                        .scaledToFill()
-                        .transition(.opacity)
+                if let found = ([name] + fallbacks).first(where: Self.exists) {
+                    Image(found).resizable().scaledToFill()
                 } else {
-                    Text(RecipeArt.emoji(title: title, ingredients: ingredients))
-                        .font(.system(size: emojiSize))
+                    Image(systemName: "fork.knife")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
                 }
             }
             .clipped()
-            .environment(\.colorScheme, .light)  // pastels stay pastel in dark mode
             .accessibilityHidden(true)
-            .task(id: title) {
-                // Loading placeholders don't get art.
-                guard !redactionReasons.contains(.placeholder) else { return }
-                let image = await RecipeThumbnails.shared.image(title: title, ingredients: ingredients)
-                withAnimation(.easeOut(duration: 0.3)) { thumbnail = image }
-            }
+    }
+
+    static func exists(_ name: String) -> Bool {
+        #if canImport(UIKit)
+        UIImage(named: name) != nil
+        #else
+        NSImage(named: name) != nil
+        #endif
     }
 }
 
-/// Thumbnail emoji for an ingredient row: a specific one when the name has a match, else the category's.
-enum IngredientEmoji {
-    private static let byWord: [(word: String, emoji: String)] = [
-        ("garlic", "🧄"), ("onion", "🧅"), ("shallot", "🧅"), ("tomato", "🍅"), ("carrot", "🥕"),
-        ("potato", "🥔"), ("broccoli", "🥦"), ("corn", "🌽"), ("pepper", "🫑"), ("jalapeño", "🌶️"),
-        ("mushroom", "🍄"), ("cucumber", "🥒"), ("avocado", "🥑"), ("lemon", "🍋"), ("lime", "🍋"),
-        ("apple", "🍎"), ("banana", "🍌"), ("strawberry", "🍓"), ("blueberry", "🫐"), ("grape", "🍇"),
-        ("peach", "🍑"), ("pear", "🍐"), ("pineapple", "🍍"), ("mango", "🥭"), ("watermelon", "🍉"),
-        ("orange", "🍊"), ("eggplant", "🍆"), ("egg", "🥚"), ("butter", "🧈"), ("cheese", "🧀"),
-        ("parmesan", "🧀"), ("mozzarella", "🧀"), ("feta", "🧀"), ("milk", "🥛"), ("cream", "🥛"),
-        ("bread", "🍞"), ("bagel", "🥯"), ("tortilla", "🫓"), ("pita", "🫓"), ("pasta", "🍝"),
-        ("spaghetti", "🍝"), ("macaroni", "🍝"), ("penne", "🍝"), ("noodle", "🍜"), ("rice", "🍚"),
-        ("chicken", "🍗"), ("turkey", "🍗"), ("bacon", "🥓"), ("beef", "🥩"), ("steak", "🥩"),
-        ("pork", "🥩"), ("sausage", "🌭"), ("hot dog", "🌭"), ("salmon", "🐟"), ("tuna", "🐟"),
-        ("tilapia", "🐟"), ("shrimp", "🍤"), ("tofu", "🧈"), ("honey", "🍯"), ("salt", "🧂"),
-        ("peanut butter", "🥜"), ("peanut", "🥜"), ("almond", "🥜"), ("walnut", "🥜"), ("cashew", "🥜"), ("bean", "🫘"),
-        ("chickpea", "🫘"), ("lentil", "🫘"), ("coconut", "🥥"), ("oil", "🫒"), ("basil", "🌿"),
-        ("cilantro", "🌿"), ("parsley", "🌿"), ("mint", "🌿"), ("spinach", "🥬"), ("lettuce", "🥬"),
-        ("kale", "🥬"), ("cabbage", "🥬"),
-    ]
+extension FoodPhoto {
+    /// The ingredient's own illustration, else its category's illustration in the same style.
+    static func ingredient(_ name: String, category: IngredientCategory) -> FoodPhoto {
+        FoodPhoto(name: "ingredient-\(slug(name))",
+                  fallbacks: ["category-\(category.rawValue)"])
+    }
 
-    /// Longest matching word wins, so "eggplant" isn't an egg and "peanut butter" isn't butter.
-    static func emoji(for name: String, category: IngredientCategory) -> String {
-        let lowered = name.lowercased()
-        let match = byWord.filter { lowered.contains($0.word) }.max { $0.word.count < $1.word.count }
-        return match?.emoji ?? category.emoji
+    /// "jalapeño pepper" → "jalapeno-pepper"; must match tools/slice-ingredient-sheets.py.
+    static func slug(_ name: String) -> String {
+        name.lowercased()
+            .folding(options: .diacriticInsensitive, locale: nil)
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+            .joined(separator: "-")
+    }
+}
+
+/// An illustration Image Playground drew for a recipe (see `RecipeThumbnails`), filling its frame.
+struct GeneratedRecipeImage: View {
+    let image: CGImage
+
+    var body: some View {
+        Color.secondary.opacity(0.12)
+            .overlay {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .scaledToFill()
+            }
+            .clipped()
+            .transition(.opacity)
+            .accessibilityHidden(true)
     }
 }

@@ -10,7 +10,9 @@ struct RecipeSuggestion {
     var difficulty: String
     @Guide(description: "Ingredients used, each a short lowercase name")
     var ingredients: [String]
-    @Guide(description: "Cooking steps in order, one short sentence each")
+    @Guide(description: "How much of each ingredient, in the same order as ingredients, like \"2 cups\", \"1 tbsp\" or \"3\"")
+    var amounts: [String] = []
+    @Guide(description: "5 to 8 detailed cooking steps in order, starting with prep. Each step is 1 to 3 sentences with the heat level, how long, and how to tell it's done, like \"Cook over medium heat for 3 to 4 minutes, until the edges set but the top is still glossy.\"")
     var steps: [String]
 }
 
@@ -21,12 +23,33 @@ private struct RecipeList {
 }
 
 /// Generates recipes from pantry ingredients with Apple's on-device model.
-struct RecipeGenerator {
+extension RecipeSuggestion {
+    /// "1 cup" for spinach, or nil when the recipe didn't say.
+    func amount(for ingredient: String) -> String? {
+        guard let index = ingredients.firstIndex(of: ingredient), amounts.indices.contains(index),
+              !amounts[index].isEmpty else { return nil }
+        return amounts[index]
+    }
+}
+
+@MainActor
+final class RecipeGenerator {
+    /// A session loaded ahead of time, so tapping Find recipes doesn't wait for the model to load.
+    private var warmSession: LanguageModelSession?
+
+    /// Call when the Suggest screen appears.
+    func prewarm() {
+        guard warmSession == nil, unavailableMessage == nil else { return }
+        let session = Self.makeSession()
+        session.prewarm()
+        warmSession = session
+    }
+
     var unavailableMessage: String? {
         Self.message(for: SystemLanguageModel.default.availability)
     }
 
-    static func message(for availability: SystemLanguageModel.Availability) -> String? {
+    nonisolated static func message(for availability: SystemLanguageModel.Availability) -> String? {
         switch availability {
         case .available:
             nil
@@ -46,7 +69,7 @@ struct RecipeGenerator {
     nonisolated static let tooLongMessage = "Too many ingredients at once. Try fewer."
     nonisolated static let genericMessage = "Couldn't come up with recipes right now. Try again."
 
-    static func message(for error: Error) -> String {
+    nonisolated static func message(for error: Error) -> String {
         if #available(iOS 27, macOS 27, visionOS 27, *), let error = error as? LanguageModelError {
             switch error {
             case .guardrailViolation, .refusal: return safetyMessage
@@ -66,17 +89,31 @@ struct RecipeGenerator {
         return genericMessage
     }
 
-    func recipes(from ingredients: [String], maxMinutes: Int? = nil) async throws -> [RecipeSuggestion] {
+    func recipes(from ingredients: [String], maxMinutes: Int? = nil,
+                  excluding: [String] = []) async throws -> [RecipeSuggestion] {
         let timeRule = maxMinutes.map { " Each recipe must take at most \($0) minutes in total." } ?? ""
-        let session = LanguageModelSession(instructions: """
-            You suggest simple home recipes. Use only the ingredients the user lists, \
-            plus basic staples: salt, pepper, oil, and water. Never add other ingredients. \
-            Name each ingredient exactly as it appears in the user's list.
-            """)
+        // Last 30 titles only, to keep the prompt well inside the model's context window.
+        let repeatRule = excluding.isEmpty ? "" : " Don't suggest these again: \(excluding.suffix(30).joined(separator: "; "))."
+        let session = warmSession ?? Self.makeSession()
+        warmSession = nil
         let response = try await session.respond(
-            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 3 different recipes.\(timeRule)",
+            to: "My ingredients: \(ingredients.joined(separator: ", ")). Suggest 3 different recipes.\(timeRule)\(repeatRule)",
             generating: RecipeList.self
         )
         return response.content.recipes
+    }
+
+    private static func makeSession() -> LanguageModelSession {
+        LanguageModelSession(instructions: """
+            You are a home cook writing recipes for a cookbook. Use only the ingredients the user lists, \
+            plus basic staples: salt, pepper, oil, and water. Never add other ingredients. \
+            Name each ingredient exactly as it appears in the user's list. \
+            Give an amount for every ingredient, for 2 servings. \
+            Make the recipes clearly different from each other: mix cuisines (for example Italian, Mexican, \
+            Asian, American, Mediterranean), meal types (breakfast, lunch, dinner, snack) and cooking methods \
+            (pan-fried, baked, roasted, simmered, no-cook). \
+            Write steps a beginner can follow without guessing: say how to cut things, the heat level, \
+            how many minutes, and what it should look, smell or feel like when it's done.
+            """)
     }
 }

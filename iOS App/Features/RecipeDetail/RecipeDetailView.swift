@@ -4,6 +4,8 @@ import SwiftUI
 struct RecipeDetailView: View {
     @State private var viewModel: RecipeDetailViewModel
     @State private var isCooking = false
+    /// Drawn on device when there's no bundled photo for this dish.
+    @State private var thumbnail: CGImage?
 
     init(viewModel: RecipeDetailViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -12,35 +14,51 @@ struct RecipeDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                RecipeArtTile(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients, emojiSize: 110)
-                    .frame(height: 260)
+                if let photo {
+                    FoodPhoto(name: photo)
+                        .frame(height: 300)
+                } else if let thumbnail {
+                    GeneratedRecipeImage(image: thumbnail)
+                        .frame(height: 300)
+                }
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
-                        .font(.title.bold())
+                        .font(.system(size: 30, weight: .heavy))
+                        .tracking(-0.5)
                         .fixedSize(horizontal: false, vertical: true)
                     RecipeMeta(minutes: viewModel.recipe.minutes, difficulty: viewModel.recipe.difficulty,
                                ingredientCount: viewModel.recipe.ingredients.count)
                 }
-                .padding()
+                .padding(Spacing.page)
+                .padding(.top, 4)
                 SectionDivider()
                 ingredients
-                    .padding()
+                    .padding(Spacing.page)
+                    .padding(.vertical, 8)
                 SectionDivider()
                 steps
-                    .padding()
+                    .padding(Spacing.page)
+                    .padding(.vertical, 8)
             }
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(edges: photo == nil && thumbnail == nil ? [] : .top)
+        .task(id: viewModel.recipe.title) {
+            guard photo == nil else { return }
+            let image = await RecipeThumbnails.shared.image(title: viewModel.recipe.title,
+                                                            ingredients: viewModel.recipe.ingredients)
+            withAnimation { thumbnail = image }
+        }
         .safeAreaInset(edge: .bottom) {
             Button("Start cooking", systemImage: "frying.pan") { isCooking = true }
                 .buttonStyle(.primary)
                 .disabled(viewModel.recipe.steps.isEmpty)
-                .padding(.horizontal)
+                .padding(.horizontal, Spacing.page)
                 .padding(.vertical, 10)
                 .background(.bar)
         }
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
+            ShareLink(item: shareText, subject: Text(viewModel.recipe.title))
             Button(viewModel.isSaved ? "Remove from Favorites" : "Add to Favorites",
                    systemImage: viewModel.isSaved ? "heart.fill" : "heart",
                    action: viewModel.toggleSave)
@@ -53,23 +71,41 @@ struct RecipeDetailView: View {
         #endif
     }
 
+    /// The recipe as plain text for Messages, Notes, Mail and the rest of the share sheet.
+    private var shareText: String {
+        let recipe = viewModel.recipe
+        let steps = recipe.steps.enumerated().map { "\($0.offset + 1). \($0.element)" }
+        return ([recipe.title, "\(recipe.minutes) min • \(recipe.difficulty)", "",
+                 "Ingredients:"] + recipe.ingredients.map { name in
+                    "• " + (recipe.amount(for: name).map { "\($0) \(name)" } ?? name) } + ["", "Steps:"] + steps
+                + ["", "Made with Pantry"]).joined(separator: "\n")
+    }
+
+    private var photo: String? {
+        RecipeArt.photo(title: viewModel.recipe.title)
+    }
+
     private var ingredients: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Ingredients", subtitle: "Tap to tick off what you've got out")
+            SectionHeader(title: "Ingredients", subtitle: "What's in your pantry is already ticked")
             ForEach(viewModel.recipe.ingredients, id: \.self) { ingredient in
                 let isChecked = viewModel.checked.contains(ingredient)
                 Button {
                     viewModel.toggle(ingredient)
                 } label: {
                     HStack(spacing: 14) {
-                        Text(IngredientEmoji.emoji(for: ingredient, category: viewModel.category(of: ingredient)))
-                            .font(.title2)
-                            .frame(width: 52, height: 52)
-                            .background(Color.secondary.opacity(0.1), in: .rect(cornerRadius: 8))
-                        Text(ingredient)
-                            .font(.body.weight(.medium))
-                            .strikethrough(isChecked)
-                            .foregroundStyle(isChecked ? .secondary : .primary)
+                        Thumbnail(photo: .ingredient(ingredient, category: viewModel.category(of: ingredient)))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ingredient)
+                                .font(.body.weight(.medium))
+                                .strikethrough(isChecked)
+                                .foregroundStyle(isChecked ? .secondary : .primary)
+                            if let amount = viewModel.recipe.amount(for: ingredient) {
+                                Text(amount)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                         Spacer()
                         Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                             .font(.title2)

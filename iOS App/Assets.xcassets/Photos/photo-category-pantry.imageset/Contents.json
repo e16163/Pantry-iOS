@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "photo-category-pantry.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

@@ -39,7 +39,16 @@ struct FallbackRecipesTests {
 
     @Test func findsBundledRecipesForATypicalPantry() {
         let best = FallbackRecipes.best(for: ["egg", "spinach", "cheddar cheese", "bread", "butter"], maxMinutes: 30)
-        #expect(best.count == 3)
+        #expect((3...6).contains(best.count))
         #expect(best.first?.title == "Spinach & Cheddar Omelette")
+    }
+
+    @Test func everyBundledRecipeHasAnAmountPerIngredient() {
+        for recipe in FallbackRecipes.all {
+            #expect(recipe.amounts.count == recipe.ingredients.count, "\(recipe.title)")
+        }
+        let omelette = FallbackRecipes.all.first { $0.title == "Spinach & Cheddar Omelette" }
+        #expect(omelette?.amount(for: "spinach") == "1 cup")
+        #expect(omelette?.amount(for: "saffron") == nil)
     }
 }

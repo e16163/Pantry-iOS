@@ -1,11 +1,19 @@
 import SwiftUI
 
-// Shared building blocks for the app's look: white pages split by thick gray bars, bold section
-// titles, big food cards, mint info banners, and one black main button per screen.
+// Shared building blocks for the Uber Eats-style look: heavy black titles, photo-led cards, gray pill
+// fields and chips, thick gray section bars, one black main button per screen, and the same spacing
+// everywhere (16pt page margins, 28pt between sections).
 
 extension Color {
     /// Brand green from the asset catalog, for tags, banners and highlights.
     static let brand = Color("AccentColor")
+    /// Light gray fill for search fields, chips and thumbnails.
+    static let fill = Color.secondary.opacity(0.1)
+}
+
+enum Spacing {
+    static let page: CGFloat = 16
+    static let section: CGFloat = 28
 }
 
 /// Full-width black (white in dark mode) button for the one main action on a screen.
@@ -26,25 +34,46 @@ extension ButtonStyle where Self == PrimaryButtonStyle {
     static var primary: PrimaryButtonStyle { PrimaryButtonStyle() }
 }
 
-/// Outlined capsule with an optional emoji, for filters: filled black when selected.
+/// The big heavy page title with a gray line under it, in place of the navigation bar title.
+struct PageTitle: View {
+    let title: String
+    /// A key, not a String, so `^[...](inflect: true)` plurals work.
+    var subtitle: LocalizedStringKey? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 34, weight: .heavy))
+                .tracking(-0.5)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Gray pill filter with an icon, sharing the row's width equally: filled black when selected.
 struct Chip: View {
-    var emoji: String? = nil
+    let systemImage: String
     let title: String
     let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if let emoji { Text(emoji) }
-                Text(title).font(.subheadline.weight(.semibold))
-            }
-            .lineLimit(1)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .foregroundStyle(isSelected ? AnyShapeStyle(.background) : AnyShapeStyle(.primary))
-            .background(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.background), in: .capsule)
-            .overlay(Capsule().strokeBorder(Color.secondary.opacity(isSelected ? 0 : 0.3)))
+            Label(title, systemImage: systemImage)
+                .labelStyle(.titleAndIcon)
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 6)
+                .frame(maxWidth: .infinity, minHeight: 38)
+                .foregroundStyle(isSelected ? AnyShapeStyle(.background) : AnyShapeStyle(.primary))
+                .background(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.fill), in: .capsule)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -54,11 +83,12 @@ struct Chip: View {
 /// Bold section title with an optional gray subtitle.
 struct SectionHeader: View {
     let title: String
-    var subtitle: String? = nil
+    /// A key, not a String, so `^[...](inflect: true)` plurals work.
+    var subtitle: LocalizedStringKey? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.title2.bold())
+            Text(title).font(.system(size: 22, weight: .bold))
             if let subtitle {
                 Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
             }
@@ -72,13 +102,13 @@ struct SectionHeader: View {
 struct SectionDivider: View {
     var body: some View {
         Rectangle()
-            .fill(Color.secondary.opacity(0.12))
+            .fill(Color.fill)
             .frame(height: 8)
             .accessibilityHidden(true)
     }
 }
 
-/// Mint banner with an icon, for good news and notices.
+/// Green-tinted banner with an icon, for good news and notices.
 struct InfoBanner: View {
     let systemImage: String
     let title: String
@@ -103,13 +133,13 @@ struct InfoBanner: View {
     }
 }
 
-/// Small dark-green pill laid over food art, like a promo tag.
+/// Small green pill laid over a photo, like a promo tag.
 struct TagPill: View {
     let text: String
 
     var body: some View {
         Text(text)
-            .font(.caption.weight(.semibold))
+            .font(.caption.weight(.bold))
             .foregroundStyle(.white)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
@@ -118,7 +148,19 @@ struct TagPill: View {
     }
 }
 
-/// Big recipe card: wide art tile with an on-hand tag, then a bold title and a gray meta line.
+/// Square photo thumbnail for list rows.
+struct Thumbnail: View {
+    let photo: FoodPhoto
+    var size: CGFloat = 52
+
+    var body: some View {
+        photo
+            .frame(width: size, height: size)
+            .clipShape(.rect(cornerRadius: 10))
+    }
+}
+
+/// Big recipe card: wide dish photo with an on-hand tag, then a bold title with a time pill and a gray meta line.
 struct RecipeCard: View {
     let title: String
     let minutes: Int
@@ -127,28 +169,60 @@ struct RecipeCard: View {
     /// nil when there's no pantry to compare against (Saved).
     var onHandCount: Int? = nil
 
+    /// Drawn on device when there's no bundled photo for this dish.
+    @State private var thumbnail: CGImage?
+    @Environment(\.redactionReasons) private var redactionReasons
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            RecipeArtTile(title: title, ingredients: ingredients, emojiSize: 72)
-                .frame(height: 170)
-                .clipShape(.rect(cornerRadius: 12))
-                .overlay(alignment: .topLeading) {
-                    if let onHandCount {
-                        TagPill(text: onHandCount >= ingredients.count
-                                ? "You have everything"
-                                : "You have \(onHandCount) of \(ingredients.count)")
-                            .padding(12)
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            if let photo = RecipeArt.photo(title: title) {
+                FoodPhoto(name: photo)
+                    .frame(height: 190)
+                    .clipShape(.rect(cornerRadius: 12))
+                    .overlay(alignment: .topLeading) { onHandTag.padding(12) }
+            } else if let thumbnail {
+                GeneratedRecipeImage(image: thumbnail)
+                    .frame(height: 190)
+                    .clipShape(.rect(cornerRadius: 12))
+                    .overlay(alignment: .topLeading) { onHandTag.padding(12) }
+            } else {
+                onHandTag
+            }
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                    Text("\(difficulty) • ^[\(ingredients.count) ingredient](inflect: true)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.bottom, 4)
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.leading)
-            RecipeMeta(minutes: minutes, difficulty: difficulty, ingredientCount: ingredients.count)
+                Spacer(minLength: 0)
+                Text("\(minutes) min")
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.fill, in: .capsule)
+            }
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+        .task(id: title) {
+            // Loading placeholders and dishes with a bundled photo don't need one.
+            guard RecipeArt.photo(title: title) == nil, !redactionReasons.contains(.placeholder) else { return }
+            let image = await RecipeThumbnails.shared.image(title: title, ingredients: ingredients)
+            withAnimation(.easeOut(duration: 0.3)) { thumbnail = image }
+        }
+    }
+
+    @ViewBuilder
+    private var onHandTag: some View {
+        if let onHandCount {
+            TagPill(text: onHandCount >= ingredients.count
+                    ? "You have everything"
+                    : "You have \(onHandCount) of \(ingredients.count)")
+        }
     }
 }
 
