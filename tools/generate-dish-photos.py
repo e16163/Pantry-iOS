@@ -41,8 +41,9 @@ def main(argv):
             and ("--redo" in argv or not (PHOTOS / f"{d[0]}.imageset").exists())]
     if todo:
         from mflux.models.z_image.cli.z_image_turbo_generate import ZImageTurboCommand, build_parser
-        args = build_parser().parse_args(["--prompt", "x", "--quantize", "8",
-                                          "--width", str(WIDTH), "--height", str(HEIGHT)])
+        # mflux's parser only reads sys.argv.
+        sys.argv = ["mflux", "--prompt", "x", "--quantize", "8", "--width", str(WIDTH), "--height", str(HEIGHT)]
+        args = build_parser().parse_args()
         model = ZImageTurboCommand.load(args)
         with tempfile.TemporaryDirectory() as tmp:
             for i, (name, _, look) in enumerate(todo, 1):
