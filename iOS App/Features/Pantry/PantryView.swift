@@ -71,7 +71,6 @@ struct PantryView: View {
                         .font(.body.weight(.semibold))
                         .foregroundStyle(.red)
                         .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Color.red.opacity(0.12), in: .rect(cornerRadius: 8))
                         .buttonStyle(.plain)
                         .plainRow(top: 24, bottom: 24)
                         .confirmationDialog("Remove all \(viewModel.items.count) ingredients?", isPresented: $isConfirmingClear,
