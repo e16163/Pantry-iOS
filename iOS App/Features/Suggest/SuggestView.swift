@@ -111,7 +111,7 @@ struct SuggestView: View {
                 Text(message)
             }
         } else if viewModel.isGenerating && viewModel.visibleRecipes.isEmpty {
-            SectionHeader(title: "Recipes for you", subtitle: "Checking your pantry…")
+            SectionHeader(title: "Recipes for you", subtitle: "Writing recipes from your pantry…")
             ForEach(0..<2, id: \.self) { _ in
                 RecipeCard(title: "Placeholder recipe name", minutes: 20, difficulty: "Easy",
                            ingredients: ["one", "two", "three"])
@@ -134,10 +134,6 @@ struct SuggestView: View {
                           subtitle: viewModel.fallbackNotice == nil ? "Made from your pantry" : "From the Pantry recipe book")
             if let notice = viewModel.fallbackNotice {
                 InfoBanner(systemImage: "book.closed", title: "Using the built-in recipe book", message: notice)
-            }
-            if viewModel.isGenerating {
-                InfoBanner(systemImage: "sparkles", title: "Writing new recipes for you",
-                           message: "They'll appear at the top in a moment. Start with these meanwhile.")
             }
             // At accessibility text sizes, side-scrolling cards get too cramped, so only the list shows.
             let shelves = typeSize.isAccessibilitySize ? [] : viewModel.shelves

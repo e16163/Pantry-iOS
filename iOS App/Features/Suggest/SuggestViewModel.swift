@@ -45,7 +45,7 @@ final class SuggestViewModel {
         Int((PantryCheck.coverage(of: recipe, pantry: pantryNames) * Double(recipe.ingredients.count)).rounded())
     }
 
-    /// Shows recipe-book matches right away, then puts newly written recipes on top when they're ready.
+    /// Newly written recipes with the best recipe-book matches under them, all shown at once.
     func generate() async {
         errorMessage = nil
         hasMore = true
@@ -55,25 +55,28 @@ final class SuggestViewModel {
         let limit = maxMinutes
         run += 1
         let thisRun = run
-        recipes = FallbackRecipes.best(for: names, maxMinutes: limit)
-        let bookTitles = recipes.map(\.title)
-        Task { await RecipeArt.prefetchPhotos(bookTitles) }
+        // Recipe-book matches wait below the new recipes; showing them first made the list jump.
+        let book = FallbackRecipes.best(for: names, maxMinutes: limit)
+        Task { await RecipeArt.prefetchPhotos(book.map(\.title)) }
+        recipes = []
         isGenerating = true
         defer { if run == thisRun { isGenerating = false } }
         do {
-            let shown = Set(recipes.map(\.title))
-            let fresh = try await generator.recipes(from: names, maxMinutes: limit, excluding: recipes.map(\.title))
+            let shown = Set(book.map(\.title))
+            let fresh = try await generator.recipes(from: names, maxMinutes: limit, excluding: book.map(\.title))
                 .filter { Self.isUsable($0, pantry: names, maxMinutes: limit) && !shown.contains($0.title) }
             await RecipeArt.prefetchPhotos(fresh.map(\.title))  // so the cards arrive with their photos
             guard run == thisRun else { return }  // a newer search replaced this one
-            recipes = fresh + recipes
+            recipes = fresh + book
             if recipes.isEmpty { errorMessage = "Couldn't find recipes that fit. Try again or allow more time." }
         } catch let error as RecipeGenerator.Unavailable {
             guard run == thisRun else { return }
+            recipes = book
             // The reason reads as a note above book recipes, so it isn't shown on its own.
             if recipes.isEmpty { errorMessage = Self.noBookMatchMessage } else { fallbackNotice = error.message }
         } catch {
             guard run == thisRun else { return }
+            recipes = book
             report(RecipeGenerator.message(for: error))
         }
     }
