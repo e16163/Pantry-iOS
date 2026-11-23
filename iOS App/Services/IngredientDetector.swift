@@ -2,7 +2,6 @@ import CoreGraphics
 import Foundation
 import FoundationModels
 import ImageIO
-import Vision
 
 @Generable
 struct DetectedItem {
@@ -37,8 +36,7 @@ struct Detection: Identifiable, Equatable {
 }
 
 /// Spots ingredients in a photo: Gemini reads it (with counts) through Pantry's Worker; offline, or once the free
-/// daily limit is used up, Apple Intelligence reads it on iOS 27; only if neither can, Vision's built-in object
-/// labels matched to the ingredient catalog are used.
+/// daily limit is used up, Apple Intelligence reads it on iOS 27.
 struct IngredientDetector {
     private let session: LanguageModelSession
     private let hints: [String]
@@ -68,38 +66,14 @@ struct IngredientDetector {
     }
 
     func ingredients(in image: CGImage) async throws -> [DetectedItem] {
-        // Vision runs alongside, in case no model can read the photo.
-        // Needs a real device: the simulator can't run Vision's classifier.
-        async let visionLabels = try? ClassifyImageRequest().perform(on: image)
-            .filter { $0.confidence >= 0.05 }
-            .sorted { $0.confidence > $1.confidence }
-            .map(\.identifier)
-        var modelItems = (try? await onlineIngredients(in: image)) ?? []
-        if modelItems.isEmpty, #available(iOS 27, macOS 27, visionOS 27, *), Self.modelCanSee {
-            modelItems = (try? await modelIngredients(in: image)) ?? []
+        var items = (try? await onlineIngredients(in: image)) ?? []
+        if items.isEmpty, #available(iOS 27, macOS 27, visionOS 27, *), Self.modelCanSee {
+            items = (try? await modelIngredients(in: image)) ?? []
         }
-        // Vision's labels are rough guesses (a block of cheese came back "mango"), so they're only a last resort.
-        if !modelItems.isEmpty { return modelItems }
-        guard let labels = await visionLabels else { throw CocoaError(.fileReadCorruptFile) }
-        return Self.catalogNames(fromLabels: labels).map { DetectedItem(name: $0, count: 0) }
+        // No guessing past this point: Vision's labels called a block of cheese "mango", so a miss says "try again".
+        if items.isEmpty { throw CocoaError(.fileReadCorruptFile) }
+        return items
     }
-
-    /// Vision labels ("bell_pepper", "fruit", "eggs") kept only when they name a catalog ingredient.
-    static func catalogNames(fromLabels labels: [String]) -> [String] {
-        labels.map { IngredientName.normalize(visionAliases[$0] ?? $0.replacingOccurrences(of: "_", with: " ")) }
-            .filter(known.contains)
-    }
-
-    /// Vision's generic labels that stand for one catalog ingredient. Only for photos, not typed names.
-    private static let visionAliases = [
-        "cheese": "cheddar cheese", "beef": "ground beef", "pepper_veggie": "bell pepper", "jalapeno": "jalapeño",
-        "pita": "pita bread", "ramen": "ramen noodle", "shellfish": "shrimp", "tortilla": "flour tortilla",
-        "tuna": "canned tuna", "white_bread": "bread", "sugar_cube": "sugar", "fries": "frozen french fry",
-        "waffle": "frozen waffle", "dumpling": "frozen dumpling", "pizza": "frozen pizza",
-        "scrambled_eggs": "egg", "fried_egg": "egg",
-    ]
-
-    private static let known = Set(IngredientCatalog.all.map(\.name))
 
     private func onlineIngredients(in image: CGImage) async throws -> [DetectedItem] {
         let jpeg = NSMutableData()
@@ -132,7 +106,6 @@ struct IngredientDetector {
     }
 
     /// Normalized, fixed-up detections with blanks, duplicates and anything already in the pantry removed, in order.
-    /// When the model and Vision both name something, the first (the model's, with its count) wins.
     static func clean(_ items: [DetectedItem], excluding pantry: [String],
                       corrections: ScanCorrections) -> [Detection] {
         var seen = Set(pantry)

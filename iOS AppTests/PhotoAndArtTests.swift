@@ -30,11 +30,6 @@ struct PhotoAndArtTests {
         #expect(QuantityUnit.text(nil, nil) == nil)
     }
 
-    @Test func visionLabelsKeepOnlyCatalogIngredients() {
-        #expect(IngredientDetector.catalogNames(fromLabels: ["food", "bell_pepper", "eggs", "kitchen", "banana", "cheese", "pepper_veggie", "shellfish"])
-                == ["bell pepper", "egg", "banana", "cheddar cheese", "bell pepper", "shrimp"])
-    }
-
     /// A small library like the real one, so the test doesn't depend on which photos have been made yet.
     let library = PhotoLibrary(dishes: [
         .init(photo: "dish-omelette", words: "omelette omelet frittata", look: "folded omelette with spinach"),
