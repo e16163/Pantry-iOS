@@ -1,5 +1,5 @@
 // Pantry's free backend on Cloudflare Workers.
-//   GET  /photo?title=Garlic%20Butter%20Steak  -> a real Pixabay photo, else an AI-made JPEG; both kept in KV
+//   GET  /photo?title=Garlic%20Butter%20Steak  -> an AI-made JPEG of that dish (or its saved Pixabay photo), kept in KV
 //   POST /scan?hints=... (JPEG body; hints are the user's past fixes) -> {"items":[{"name":"egg","count":6}]}
 //   POST /recipes {"ingredients":["egg"],"maxMinutes":30,"excluding":["Omelette"]} -> {"recipes":[...3 recipes]}
 // Deploy: npx wrangler deploy (from this folder)
@@ -36,49 +36,49 @@ export default {
 };
 
 async function photo(url, env) {
-  const title = (url.searchParams.get("title") ?? "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
-  if (!title) return new Response("Missing title", { status: 400 });
+  const title = url.searchParams.get("title") ?? "";
+  if (!title.trim()) return new Response("Missing title", { status: 400 });
   const headers = { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" };
-  // A real photo from Pixabay when there's one: "garlic butter steak", else "butter steak", then "steak".
-  // Pixabay asks that photos be copied to our own server rather than linked, so they're kept in KV.
-  if (env.PIXABAY_KEY) {
-    const known = await env.PHOTOS.get(`dish:${title}`, "arrayBuffer");
-    if (known) return new Response(known, { headers });
-    // Words that describe the cooking, not the dish, only confuse a photo search.
-    const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
-    const words = title.split(" ").filter((word) => !filler.test(word));
-    const searches = await Promise.all(words.slice(0, 3).map((_, i) =>
-      fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
-        `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(words.slice(i).join(" "))}`,
-        { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
-        .then((response) => (response.ok ? response.json() : {})).then((json) => json.hits ?? [], () => [])));
-    // Most specific search first, each photo once.
-    const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()];
-    // Each photo goes to one dish only, so similar titles don't share a picture.
-    const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`claimed:${hit.id}`)));
-    const pick = await exactPhoto(env, title, hits.filter((_, j) => !used[j]).slice(0, 8));
-    if (pick) {
-      const bytes = await (await fetch(pick.largeImageURL)).arrayBuffer();
-      await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes), env.PHOTOS.put(`claimed:${pick.id}`, title)]);
-      return new Response(bytes, { headers });
-    }
-  }
-  const saved = await env.PHOTOS.get(`made:${title}`, "arrayBuffer");
-  if (saved) return new Response(saved, { headers });
+  return new Response(await dishPhoto(env, title), { headers });
+}
 
-  // No real photo shows this exact dish, so one is made from the title.
-  // FLUX.2 klein 4B: much more realistic than FLUX.1 schnell, still about 190 free pictures a day at this size.
-  const form = new FormData();
-  form.append("prompt", `${title}, ${STYLE}`);
-  form.append("width", "768");
-  form.append("height", "512");
-  const body = new Response(form);
-  const { image } = await env.AI.run("@cf/black-forest-labs/flux-2-klein-4b", {
-    multipart: { body: body.body, contentType: body.headers.get("content-type") },
-  });
-  const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
-  await env.PHOTOS.put(`made:${title}`, bytes);
-  return new Response(bytes, { headers });
+// A new dish gets a picture made from its title: it shows exactly this dish, no other dish has it, and it takes
+// a second or two. Checking Pixabay photos with Gemini takes 3-13 s and uses the quota scans need, so that's only
+// for when the free daily pictures (about 100) have run out.
+async function dishPhoto(env, rawTitle) {
+  const title = rawTitle.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
+  const [known, saved] = await Promise.all([env.PHOTOS.get(`dish:${title}`, "arrayBuffer"),
+    env.PHOTOS.get(`made:${title}`, "arrayBuffer")]);
+  if (known ?? saved) return known ?? saved;
+  try {
+    return await madePhoto(env, title);
+  } catch (error) {
+    const real = env.PIXABAY_KEY && await realPhoto(env, title);
+    if (!real) throw error;
+    return real;
+  }
+}
+
+// A real photo from Pixabay checked to show exactly this dish, or null. Searches "garlic butter steak", then
+// "butter steak", then "steak". Pixabay asks that photos be copied to our own server, so they're kept in KV.
+async function realPhoto(env, title) {
+  // Words that describe the cooking, not the dish, only confuse a photo search.
+  const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
+  const words = title.split(" ").filter((word) => !filler.test(word));
+  const searches = await Promise.all(words.slice(0, 3).map((_, i) =>
+    fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
+      `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(words.slice(i).join(" "))}`,
+      { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
+      .then((response) => (response.ok ? response.json() : {})).then((json) => json.hits ?? [], () => [])));
+  // Most specific search first, each photo once.
+  const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()];
+  // Each photo goes to one dish only, so similar titles don't share a picture.
+  const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`claimed:${hit.id}`)));
+  const pick = await exactPhoto(env, title, hits.filter((_, j) => !used[j]).slice(0, 8));
+  if (!pick) return null;
+  const bytes = await (await fetch(pick.largeImageURL)).arrayBuffer();
+  await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes), env.PHOTOS.put(`claimed:${pick.id}`, title)]);
+  return bytes;
 }
 
 // Pixabay tags are loose ("sandwich" finds hamburgers, "shrimp fried rice" finds plain fried rice), so Gemini
@@ -87,9 +87,7 @@ async function exactPhoto(env, title, hits) {
   if (hits.length === 0) return null;
   const images = await Promise.all(hits.map(async (hit) => {
     const bytes = new Uint8Array(await (await fetch(hit.webformatURL.replace("_640", "_340"))).arrayBuffer());
-    let binary = "";
-    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    return { inline_data: { mime_type: "image/jpeg", data: btoa(binary) } };
+    return { inline_data: { mime_type: "image/jpeg", data: bytes.toBase64() } };
   }));
   const question = `These are photos 0 to ${hits.length - 1}. A recipe is called "${title}". For each photo, say ` +
     "in a few words what single dish fills it, then whether it is exactly this recipe: the same kind of dish (a " +
@@ -110,8 +108,22 @@ async function exactPhoto(env, title, hits) {
     const spread = [...title].reduce((sum, c) => sum + c.charCodeAt(0), 0);
     return hits[matches[spread % matches.length]];
   } catch {
-    return null;  // Gemini is busy: a made picture of the exact dish beats an unchecked photo
+    return null;  // Gemini is busy
   }
+}
+
+
+// FLUX.1 schnell: about 1.5 s a picture, where
+// FLUX.2 klein looked a little more real but took 5 s or more.
+async function madePhoto(env, title) {
+  const make = () => env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt: `${title}, ${STYLE}`, steps: 4 });
+  // Now and then one waits 10 s in Cloudflare's queue, so a second try starts at 2.5 s and the first one back wins.
+  const first = make();
+  const second = new Promise((resolve) => { setTimeout(resolve, 2_500); first.catch(resolve); }).then(make);
+  const { image } = await Promise.any([first, second]).catch((error) => { throw new Error(error.errors.map(String).join(" | ")); });
+  const bytes = Uint8Array.fromBase64(image);  // native decode; a JS loop ran past the free plan's CPU limit
+  await env.PHOTOS.put(`made:${title}`, bytes);
+  return bytes;
 }
 
 async function scan(request, env) {
@@ -213,8 +225,10 @@ async function recipes(request, env) {
   // the three don't repeat each other.
   const kinds = ["breakfast, like an egg dish, toast or pancakes, never pasta", "lunch: a salad, sandwich, wrap, soup or " +
     "rice bowl, never pasta", "a dinner main course"];
+  // Each recipe's photo is made as soon as that recipe is written, so the app's photo requests find it saved.
   const results = await Promise.allSettled(kinds.map((kind) => oneRecipe(env,
-    `Write 1 recipe for ${kind}. Choose from these ingredients: ${list(ingredients, 80)}.${rules}`)));
+    `Write 1 recipe for ${kind}. Choose from these ingredients: ${list(ingredients, 80)}.${rules}`)
+    .then(async (recipe) => { await dishPhoto(env, recipe.title).catch(() => {}); return recipe; })));
   const found = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
   if (found.length === 0) throw results[0].reason;
   return Response.json({ recipes: found });

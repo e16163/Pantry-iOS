@@ -11,8 +11,8 @@ enum RecipeArt {
     /// Pantry's free Cloudflare Worker (worker/ in this repo).
     static let server = URL(string: "https://pantry.supersaladstinger.workers.dev")!
 
-    /// The photo a card shows for this title: a real Pixabay photo checked to show exactly this dish, else an
-    /// AI-made picture of it. Never the closest bundled photo, which similar dishes would share.
+    /// The photo a card shows for this title: a picture made of exactly this dish (or its saved Pixabay photo).
+    /// Never the closest bundled photo, which similar dishes would share.
     static func photoURL(title: String) -> URL {
         server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)])
     }
@@ -21,13 +21,13 @@ enum RecipeArt {
     @MainActor static var photos: [String: Image] = [:]
 
     /// Downloads these dishes' photos into memory; recipes are shown only after this returns, all at once.
-    /// A dish seen for the first time can take the server ~20 s to find and check a photo.
+    /// A new dish takes the server 1-3 s to draw; one stuck longer than 8 s loads on its card instead.
     @MainActor static func prefetchPhotos(_ titles: [String]) async {
         let missing = titles.filter { photos[$0] == nil }
         await withTaskGroup(of: (String, Image?).self) { group in
             for title in missing {
                 group.addTask {
-                    let data = try? await URLSession.shared.data(for: URLRequest(url: photoURL(title: title), timeoutInterval: 30)).0
+                    let data = try? await URLSession.shared.data(for: URLRequest(url: photoURL(title: title), timeoutInterval: 8)).0
                     return (title, data.flatMap(image))
                 }
             }
