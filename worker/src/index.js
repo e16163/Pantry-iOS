@@ -42,35 +42,31 @@ async function photo(url, env) {
   // A real photo from Pixabay when there's one: "garlic butter steak", else "butter steak", then "steak".
   // Pixabay asks that photos be copied to our own server rather than linked, so they're kept in KV.
   if (env.PIXABAY_KEY) {
-    const known = await env.PHOTOS.get(`real:${title}`, "arrayBuffer");
+    const known = await env.PHOTOS.get(`exact:${title}`, "arrayBuffer");
     if (known) return new Response(known, { headers });
     // Words that describe the cooking, not the dish, only confuse a photo search.
     const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
     const words = title.split(" ").filter((word) => !filler.test(word));
-    for (let i = 0; i < Math.min(words.length, 3); i++) {
-      const search = await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
+    const searches = await Promise.all(words.slice(0, 3).map((_, i) =>
+      fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
         `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(words.slice(i).join(" "))}`,
-        { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } });
-      console.log(`pixabay ${search.status} limit=${search.headers.get("x-ratelimit-limit")} left=${search.headers.get("x-ratelimit-remaining")} reset=${search.headers.get("x-ratelimit-reset")}`);
-      // A served plate, not raw ingredients on a table: "pasta" alone mostly finds dry noodles.
-      const hits = search.ok ? ((await search.json()).hits ?? []).filter((hit) => !/raw|uncooked|ingredient|dry|dried/.test(hit.tags)) : [];
-      const plated = (hit) => /dish|meal|plate|dinner|lunch|breakfast|cooked|served/.test(hit.tags);
-      const candidates = [...hits.filter(plated), ...hits.filter((hit) => !plated(hit))].slice(0, 8);
-      // Each photo goes to one dish only, so similar titles don't share a picture.
-      const used = await Promise.all(candidates.map((hit) => env.PHOTOS.get(`used:${hit.id}`)));
-      const pick = candidates.find((_, j) => !used[j]);
-      if (pick) {
-        const bytes = await (await fetch(pick.largeImageURL)).arrayBuffer();
-        await Promise.all([env.PHOTOS.put(`real:${title}`, bytes), env.PHOTOS.put(`used:${pick.id}`, title)]);
-        return new Response(bytes, { headers });
-      }
+        { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
+        .then((response) => (response.ok ? response.json() : {})).then((json) => json.hits ?? [], () => [])));
+    // Most specific search first, each photo once.
+    const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()];
+    // Each photo goes to one dish only, so similar titles don't share a picture.
+    const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`taken:${hit.id}`)));
+    const pick = await exactPhoto(env, title, hits.filter((_, j) => !used[j]).slice(0, 8));
+    if (pick) {
+      const bytes = await (await fetch(pick.largeImageURL)).arrayBuffer();
+      await Promise.all([env.PHOTOS.put(`exact:${title}`, bytes), env.PHOTOS.put(`taken:${pick.id}`, title)]);
+      return new Response(bytes, { headers });
     }
   }
-  // The app has its own picture for this dish and only wants a real photo.
-  if (url.searchParams.has("real")) return new Response("No real photo", { status: 404 });
   const saved = await env.PHOTOS.get(title, "arrayBuffer");
   if (saved) return new Response(saved, { headers });
 
+  // No real photo shows this exact dish, so one is made from the title.
   // FLUX.2 klein 4B: much more realistic than FLUX.1 schnell, still about 190 free pictures a day at this size.
   const form = new FormData();
   form.append("prompt", `${title}, ${STYLE}`);
@@ -83,6 +79,37 @@ async function photo(url, env) {
   const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
   await env.PHOTOS.put(title, bytes);
   return new Response(bytes, { headers });
+}
+
+// Pixabay tags are loose ("sandwich" finds hamburgers, "shrimp fried rice" finds plain fried rice), so Gemini
+// looks at the candidates and picks one that shows exactly this dish, or none.
+async function exactPhoto(env, title, hits) {
+  if (hits.length === 0) return null;
+  const images = await Promise.all(hits.map(async (hit) => {
+    const bytes = new Uint8Array(await (await fetch(hit.webformatURL.replace("_640", "_340"))).arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return { inline_data: { mime_type: "image/jpeg", data: btoa(binary) } };
+  }));
+  const question = `These are photos 0 to ${hits.length - 1}. A recipe is called "${title}". List every photo ` +
+    "that clearly shows this exact dish ready to eat: the same kind of dish (a hamburger is not a sandwich, plain " +
+    "fried rice is not shrimp fried rice) with its main named ingredients visible. Leave out raw ingredients, " +
+    "photos with text, and anything you're unsure about. An empty list is fine.";
+  try {
+    const text = await gemini(env, {
+      contents: [{ parts: [{ text: question }, ...images] }],
+      generationConfig: { responseMimeType: "application/json",
+        responseSchema: { type: "OBJECT", properties: { matches: { type: "ARRAY", items: { type: "INTEGER" } } },
+          required: ["matches"] } },
+    }, 2_500, 6_000);
+    const matches = JSON.parse(text).matches.filter((i) => hits[i]);
+    if (matches.length === 0) return null;
+    // shortcut: titles loading at the same moment can race for one photo; spreading picks by title makes it rare.
+    const spread = [...title].reduce((sum, c) => sum + c.charCodeAt(0), 0);
+    return hits[matches[spread % matches.length]];
+  } catch {
+    return null;  // Gemini is busy: a made picture of the exact dish beats an unchecked photo
+  }
 }
 
 async function scan(request, env) {
@@ -108,7 +135,7 @@ async function scan(request, env) {
             properties: { items: { type: "ARRAY", items: {
               type: "OBJECT",
               properties: { name: { type: "STRING" }, count: { type: "INTEGER" }, amount: { type: "NUMBER" },
-                unit: { type: "STRING", enum: ["g", "kg", "ml", "L", "lb", "oz", ""] } },
+                unit: { type: "STRING", enum: ["g", "kg", "ml", "L", "lb", "oz", "none"] } },
               required: ["name", "count", "amount", "unit"],
             } } },
             required: ["items"],
@@ -123,10 +150,12 @@ async function scan(request, env) {
 }
 
 // Flash-Lite sometimes stops after the first few things it sees, so two reads run at once and their lists are
-// merged. The second gets 1.5 s more than the first, so a slow one doesn't hold up the scan.
+// merged. They use two Flash-Lite versions, each with its own free quota and capacity, so one being busy
+// doesn't sink the scan. The second gets 1.5 s more than the first, so a slow one doesn't hold up the scan.
 async function readTwice(env, request) {
-  const reads = [0, 1].map(() => gemini(env, request, 2_500, 5_000).then((text) => JSON.parse(text).items));
-  const first = await Promise.any(reads);
+  const reads = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
+    .map((model) => gemini(env, request, 2_500, 5_000, model).then((text) => JSON.parse(text).items));
+  const first = await Promise.any(reads).catch((error) => { throw new Error(error.errors.map(String).join(" | ")); });
   const both = await Promise.race([Promise.allSettled(reads), new Promise((resolve) => setTimeout(resolve, 1_500))]);
   const lists = both ? both.filter((r) => r.status === "fulfilled").map((r) => r.value) : [first];
   const merged = new Map();
@@ -256,7 +285,7 @@ async function geminiRecipe(env, prompt) {
 
 // Flash-Lite answers fast. When Google is overloaded it can hang, so if it hasn't answered in `hedge` ms
 // (or has failed) Flash is asked too, and whichever answers first wins. Each call gives up after `timeout` ms.
-async function gemini(env, request, hedge, timeout) {
+async function gemini(env, request, hedge, timeout, model = "gemini-flash-lite-latest") {
   const body = JSON.stringify(request);
   const ask = async (model) => {
     const response = await fetch(
@@ -267,7 +296,7 @@ async function gemini(env, request, hedge, timeout) {
     return (await response.json()).candidates[0].content.parts[0].text;
   };
   let answered = false;
-  const lite = ask("gemini-flash-lite-latest");
+  const lite = ask(model);
   lite.then(() => { answered = true; }, () => {});
   // Flash also starts right away if Flash-Lite fails, like when its free daily quota is used up.
   const backup = new Promise((resolve) => { setTimeout(resolve, hedge); lite.catch(resolve); })
@@ -275,7 +304,13 @@ async function gemini(env, request, hedge, timeout) {
   try {
     return await Promise.any([lite, backup]);
   } catch (error) {
-    throw new Error(error.errors.map(String).join(" | "));
+    // Google's "high demand" 503s come and go, so one more try goes to a newer Flash-Lite with its own capacity.
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    try {
+      return await ask("gemini-3.5-flash-lite");
+    } catch (retry) {
+      throw new Error([...error.errors, retry].map(String).join(" | "));
+    }
   }
 }
 
