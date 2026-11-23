@@ -57,7 +57,7 @@ final class SuggestViewModel {
         let thisRun = run
         // Recipe-book matches wait below the new recipes; showing them first made the list jump.
         let book = FallbackRecipes.best(for: names, maxMinutes: limit)
-        Task { await RecipeArt.prefetchPhotos(book.map(\.title)) }
+        let bookPhotos = Task { await RecipeArt.prefetchPhotos(book.map(\.title)) }
         recipes = []
         isGenerating = true
         defer { if run == thisRun { isGenerating = false } }
@@ -66,15 +66,18 @@ final class SuggestViewModel {
             let fresh = try await generator.recipes(from: names, maxMinutes: limit, excluding: book.map(\.title))
                 .filter { Self.isUsable($0, pantry: names, maxMinutes: limit) && !shown.contains($0.title) }
             await RecipeArt.prefetchPhotos(fresh.map(\.title))  // so the cards arrive with their photos
+            await bookPhotos.value
             guard run == thisRun else { return }  // a newer search replaced this one
             recipes = fresh + book
             if recipes.isEmpty { errorMessage = "Couldn't find recipes that fit. Try again or allow more time." }
         } catch let error as RecipeGenerator.Unavailable {
+            await bookPhotos.value
             guard run == thisRun else { return }
             recipes = book
             // The reason reads as a note above book recipes, so it isn't shown on its own.
             if recipes.isEmpty { errorMessage = Self.noBookMatchMessage } else { fallbackNotice = error.message }
         } catch {
+            await bookPhotos.value
             guard run == thisRun else { return }
             recipes = book
             report(RecipeGenerator.message(for: error))

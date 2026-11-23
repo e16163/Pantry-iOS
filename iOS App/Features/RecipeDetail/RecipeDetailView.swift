@@ -12,7 +12,7 @@ struct RecipeDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                RecipePicture(title: viewModel.recipe.title, ingredients: viewModel.recipe.ingredients)
+                RecipePicture(title: viewModel.recipe.title)
                     .frame(height: 360)  // ~60 pt sits under the status bar, so the dish shows whole below it
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.recipe.title)
