@@ -11,15 +11,10 @@ enum RecipeArt {
     /// Pantry's free Cloudflare Worker (worker/ in this repo).
     static let server = URL(string: "https://pantry.supersaladstinger.workers.dev")!
 
-    /// A real photo of this dish from Pixabay; with `realOnly` false, an AI-made picture when Pixabay has none.
-    static func onlinePhoto(title: String, realOnly: Bool = false) -> URL {
-        server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)]
-            + (realOnly ? [URLQueryItem(name: "real", value: "1")] : []))
-    }
-
-    /// The photo a card shows for this title: a real photo, or for dishes without a bundled one, any picture.
+    /// The photo a card shows for this title: a real Pixabay photo checked to show exactly this dish, else an
+    /// AI-made picture of it. Never the closest bundled photo, which similar dishes would share.
     static func photoURL(title: String) -> URL {
-        onlinePhoto(title: title, realOnly: photo(title: title) != nil)
+        server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)])
     }
 
     /// Downloads these dishes' photos into the shared cache, so their cards show them right away.
@@ -141,9 +136,8 @@ struct PhotoLibrary {
         """))
 }
 
-/// A real photo of the dish from Pixabay through the Worker. Until it arrives (or offline, or when Pixabay has none)
-/// the closest bundled photo shows, else the ingredient drawings; dishes with no bundled photo and no Pixabay match
-/// get an AI-made picture.
+/// The dish's own photo through the Worker. Until it arrives (or offline) the closest bundled photo shows, else
+/// the ingredient drawings.
 struct RecipePicture: View {
     let title: String
     let ingredients: [String]
