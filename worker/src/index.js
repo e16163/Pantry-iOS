@@ -42,7 +42,7 @@ async function photo(url, env) {
   // A real photo from Pixabay when there's one: "garlic butter steak", else "butter steak", then "steak".
   // Pixabay asks that photos be copied to our own server rather than linked, so they're kept in KV.
   if (env.PIXABAY_KEY) {
-    const known = await env.PHOTOS.get(`exact:${title}`, "arrayBuffer");
+    const known = await env.PHOTOS.get(`dish:${title}`, "arrayBuffer");
     if (known) return new Response(known, { headers });
     // Words that describe the cooking, not the dish, only confuse a photo search.
     const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
@@ -55,15 +55,15 @@ async function photo(url, env) {
     // Most specific search first, each photo once.
     const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()];
     // Each photo goes to one dish only, so similar titles don't share a picture.
-    const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`taken:${hit.id}`)));
+    const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`claimed:${hit.id}`)));
     const pick = await exactPhoto(env, title, hits.filter((_, j) => !used[j]).slice(0, 8));
     if (pick) {
       const bytes = await (await fetch(pick.largeImageURL)).arrayBuffer();
-      await Promise.all([env.PHOTOS.put(`exact:${title}`, bytes), env.PHOTOS.put(`taken:${pick.id}`, title)]);
+      await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes), env.PHOTOS.put(`claimed:${pick.id}`, title)]);
       return new Response(bytes, { headers });
     }
   }
-  const saved = await env.PHOTOS.get(title, "arrayBuffer");
+  const saved = await env.PHOTOS.get(`made:${title}`, "arrayBuffer");
   if (saved) return new Response(saved, { headers });
 
   // No real photo shows this exact dish, so one is made from the title.
@@ -77,7 +77,7 @@ async function photo(url, env) {
     multipart: { body: body.body, contentType: body.headers.get("content-type") },
   });
   const bytes = Uint8Array.from(atob(image), (c) => c.charCodeAt(0));
-  await env.PHOTOS.put(title, bytes);
+  await env.PHOTOS.put(`made:${title}`, bytes);
   return new Response(bytes, { headers });
 }
 
@@ -91,18 +91,20 @@ async function exactPhoto(env, title, hits) {
     for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     return { inline_data: { mime_type: "image/jpeg", data: btoa(binary) } };
   }));
-  const question = `These are photos 0 to ${hits.length - 1}. A recipe is called "${title}". List every photo ` +
-    "that clearly shows this exact dish ready to eat: the same kind of dish (a hamburger is not a sandwich, plain " +
-    "fried rice is not shrimp fried rice) with its main named ingredients visible. Leave out raw ingredients, " +
-    "photos with text, and anything you're unsure about. An empty list is fine.";
+  const question = `These are photos 0 to ${hits.length - 1}. A recipe is called "${title}". For each photo, say ` +
+    "in a few words what single dish fills it, then whether it is exactly this recipe: the same kind of dish (a " +
+    "hamburger is not a sandwich, plain fried rice is not shrimp fried rice, a platter or salad is not a sandwich) " +
+    "with its main named ingredients visible and nothing else taking up the photo. Raw ingredients, several " +
+    "different foods, text, or any doubt mean false.";
   try {
     const text = await gemini(env, {
       contents: [{ parts: [{ text: question }, ...images] }],
       generationConfig: { responseMimeType: "application/json",
-        responseSchema: { type: "OBJECT", properties: { matches: { type: "ARRAY", items: { type: "INTEGER" } } },
-          required: ["matches"] } },
+        responseSchema: { type: "OBJECT", properties: { photos: { type: "ARRAY", items: { type: "OBJECT",
+          properties: { photo: { type: "INTEGER" }, shows: { type: "STRING" }, exact: { type: "BOOLEAN" } },
+          required: ["photo", "shows", "exact"] } } }, required: ["photos"] } },
     }, 2_500, 6_000);
-    const matches = JSON.parse(text).matches.filter((i) => hits[i]);
+    const matches = JSON.parse(text).photos.filter((p) => p.exact && hits[p.photo]).map((p) => p.photo);
     if (matches.length === 0) return null;
     // shortcut: titles loading at the same moment can race for one photo; spreading picks by title makes it rare.
     const spread = [...title].reduce((sum, c) => sum + c.charCodeAt(0), 0);

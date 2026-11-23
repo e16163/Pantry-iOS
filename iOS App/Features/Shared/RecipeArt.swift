@@ -136,19 +136,16 @@ struct PhotoLibrary {
         """))
 }
 
-/// The dish's own photo through the Worker. Until it arrives (or offline) the closest bundled photo shows, else
-/// the ingredient drawings.
+/// The dish's own photo through the Worker. Until it arrives (or offline) the ingredient drawings show, never the
+/// closest bundled photo, which can be a different dish.
 struct RecipePicture: View {
     let title: String
     let ingredients: [String]
 
     var body: some View {
-        let bundled = RecipeArt.photo(title: title)
         AsyncImage(url: RecipeArt.photoURL(title: title)) { phase in
             if let image = phase.image {
                 Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
-            } else if let bundled {
-                FoodPhoto(name: bundled)
             } else {
                 IngredientMosaic(ingredients: ingredients)
             }
