@@ -26,6 +26,16 @@ struct PantryViewModelTests {
         #expect(viewModel.newItemName == "")
     }
 
+    @Test func deleteAllEmptiesThePantry() {
+        for name in ["egg", "milk", "rice"] {
+            viewModel.newItemName = name
+            viewModel.add()
+        }
+        viewModel.deleteAll()
+        #expect(viewModel.items.isEmpty)
+        #expect(viewModel.recentlyDeleted == nil)
+    }
+
     @Test func addIgnoresBlankInput() {
         viewModel.newItemName = "   "
         viewModel.add()

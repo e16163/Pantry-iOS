@@ -149,6 +149,13 @@ final class PantryViewModel {
         load()
     }
 
+    /// Empties the pantry. The view asks first, since this can't be undone.
+    func deleteAll() {
+        items.forEach(context.delete)
+        recentlyDeleted = nil
+        load()
+    }
+
     func undoDelete() {
         guard let item = recentlyDeleted else { return }
         recentlyDeleted = nil
