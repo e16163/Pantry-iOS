@@ -42,26 +42,27 @@ async function photo(url, env) {
   return new Response(await dishPhoto(env, title), { headers });
 }
 
-// A new dish gets a picture made from its title: it shows exactly this dish, no other dish has it, and it takes
-// a second or two. Checking Pixabay photos with Gemini takes 3-13 s and uses the quota scans need, so that's only
-// for when the free daily pictures (about 100) have run out.
+// A new dish gets a picture made from its title in 1-3 s: it shows exactly this dish and no other dish has it.
+// When the free daily pictures (about 100) run out, or one takes over 3 s, a Pixabay photo is used instead.
 async function dishPhoto(env, rawTitle) {
   const title = rawTitle.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
   const [known, saved] = await Promise.all([env.PHOTOS.get(`dish:${title}`, "arrayBuffer"),
     env.PHOTOS.get(`made:${title}`, "arrayBuffer")]);
   if (known ?? saved) return known ?? saved;
   try {
-    return await madePhoto(env, title);
+    return await Promise.race([madePhoto(env, title),
+      new Promise((_, reject) => setTimeout(reject, 3_000, new Error("picture took over 3 s")))]);
   } catch (error) {
-    const real = env.PIXABAY_KEY && await realPhoto(env, title);
+    const real = env.PIXABAY_KEY && await stockPhoto(env, title);
     if (!real) throw error;
     return real;
   }
 }
 
-// A real photo from Pixabay checked to show exactly this dish, or null. Searches "garlic butter steak", then
+// The closest Pixabay photo no other dish has, in about a second: searches "garlic butter steak", then
 // "butter steak", then "steak". Pixabay asks that photos be copied to our own server, so they're kept in KV.
-async function realPhoto(env, title) {
+// shortcut: close, not always exact (a Gemini check took 3-13 s); only used when made pictures run out.
+async function stockPhoto(env, title) {
   // Words that describe the cooking, not the dish, only confuse a photo search.
   const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
   const words = title.split(" ").filter((word) => !filler.test(word));
@@ -74,52 +75,22 @@ async function realPhoto(env, title) {
   const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()];
   // Each photo goes to one dish only, so similar titles don't share a picture.
   const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`claimed:${hit.id}`)));
-  const pick = await exactPhoto(env, title, hits.filter((_, j) => !used[j]).slice(0, 8));
+  const pick = hits.find((_, j) => !used[j]);
   if (!pick) return null;
-  const bytes = await (await fetch(pick.largeImageURL)).arrayBuffer();
+  const image = await fetch(pick.largeImageURL);
+  // Pixabay answers "Rate limit exceeded" as text when busy; that must never be saved as the dish's photo.
+  if (!image.ok || !image.headers.get("content-type")?.startsWith("image/")) return null;
+  const bytes = await image.arrayBuffer();
   await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes), env.PHOTOS.put(`claimed:${pick.id}`, title)]);
   return bytes;
 }
 
-// Pixabay tags are loose ("sandwich" finds hamburgers, "shrimp fried rice" finds plain fried rice), so Gemini
-// looks at the candidates and picks one that shows exactly this dish, or none.
-async function exactPhoto(env, title, hits) {
-  if (hits.length === 0) return null;
-  const images = await Promise.all(hits.map(async (hit) => {
-    const bytes = new Uint8Array(await (await fetch(hit.webformatURL.replace("_640", "_340"))).arrayBuffer());
-    return { inline_data: { mime_type: "image/jpeg", data: bytes.toBase64() } };
-  }));
-  const question = `These are photos 0 to ${hits.length - 1}. A recipe is called "${title}". For each photo, say ` +
-    "in a few words what single dish fills it, then whether it is exactly this recipe: the same kind of dish (a " +
-    "hamburger is not a sandwich, plain fried rice is not shrimp fried rice, a platter or salad is not a sandwich) " +
-    "with its main named ingredients visible and nothing else taking up the photo. Raw ingredients, several " +
-    "different foods, text, or any doubt mean false.";
-  try {
-    const text = await gemini(env, {
-      contents: [{ parts: [{ text: question }, ...images] }],
-      generationConfig: { responseMimeType: "application/json",
-        responseSchema: { type: "OBJECT", properties: { photos: { type: "ARRAY", items: { type: "OBJECT",
-          properties: { photo: { type: "INTEGER" }, shows: { type: "STRING" }, exact: { type: "BOOLEAN" } },
-          required: ["photo", "shows", "exact"] } } }, required: ["photos"] } },
-    }, 2_500, 6_000);
-    const matches = JSON.parse(text).photos.filter((p) => p.exact && hits[p.photo]).map((p) => p.photo);
-    if (matches.length === 0) return null;
-    // shortcut: titles loading at the same moment can race for one photo; spreading picks by title makes it rare.
-    const spread = [...title].reduce((sum, c) => sum + c.charCodeAt(0), 0);
-    return hits[matches[spread % matches.length]];
-  } catch {
-    return null;  // Gemini is busy
-  }
-}
-
-
-// FLUX.1 schnell: about 1.5 s a picture, where
-// FLUX.2 klein looked a little more real but took 5 s or more.
+// FLUX.1 schnell: about 1.5 s a picture, where FLUX.2 klein looked a little more real but took 5 s or more.
 async function madePhoto(env, title) {
   const make = () => env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt: `${title}, ${STYLE}`, steps: 4 });
-  // Now and then one waits 10 s in Cloudflare's queue, so a second try starts at 2.5 s and the first one back wins.
+  // Now and then one waits 10 s in Cloudflare's queue, so a second try starts at 1.5 s and the first one back wins.
   const first = make();
-  const second = new Promise((resolve) => { setTimeout(resolve, 2_500); first.catch(resolve); }).then(make);
+  const second = new Promise((resolve) => { setTimeout(resolve, 1_500); first.catch(resolve); }).then(make);
   const { image } = await Promise.any([first, second]).catch((error) => { throw new Error(error.errors.map(String).join(" | ")); });
   const bytes = Uint8Array.fromBase64(image);  // native decode; a JS loop ran past the free plan's CPU limit
   await env.PHOTOS.put(`made:${title}`, bytes);
