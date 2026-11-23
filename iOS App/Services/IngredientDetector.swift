@@ -9,6 +9,16 @@ struct DetectedItem {
     var name: String
     @Guide(description: "How many separate pieces you can count, like 6 for six eggs. 0 if it isn't countable, like milk, rice or flour")
     var count: Int
+    @Guide(description: "For things that aren't counted: the amount from the package size on the label, or your best guess of what's there, like 3.8 for a gallon of milk in L. 0 if you can't tell")
+    var amount: Double
+    @Guide(description: "Unit of amount", .anyOf(["g", "kg", "ml", "L", "lb", "oz", ""]))
+    var unit: String
+}
+
+extension DetectedItem {
+    init(name: String, count: Int) {
+        self.init(name: name, count: count, amount: 0, unit: "")
+    }
 }
 
 @Generable
@@ -87,11 +97,13 @@ struct IngredientDetector {
         request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
         let (data, response) = try await URLSession.shared.upload(for: request, from: jpeg as Data)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
-        return try JSONDecoder().decode(OnlineScan.self, from: data).items.map { DetectedItem(name: $0.name, count: $0.count) }
+        return try JSONDecoder().decode(OnlineScan.self, from: data).items.map {
+            DetectedItem(name: $0.name, count: $0.count, amount: $0.amount ?? 0, unit: $0.unit ?? "")
+        }
     }
 
     private struct OnlineScan: Decodable {
-        struct Item: Decodable { let name: String; let count: Int }
+        struct Item: Decodable { let name: String; let count: Int; let amount: Double?; let unit: String? }
         let items: [Item]
     }
 
@@ -112,7 +124,9 @@ struct IngredientDetector {
         return items.compactMap { item in
             let name = corrections.apply(IngredientName.normalize(item.name))
             guard !name.isEmpty, seen.insert(name).inserted else { return nil }
-            return item.count > 0 ? Detection(name: name, quantity: Double(item.count), unit: .pieces) : Detection(name: name)
+            if item.count > 0 { return Detection(name: name, quantity: Double(item.count), unit: .pieces) }
+            if item.amount > 0, let unit = QuantityUnit(rawValue: item.unit) { return Detection(name: name, quantity: item.amount, unit: unit) }
+            return Detection(name: name)
         }
     }
 }

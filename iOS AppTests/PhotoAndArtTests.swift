@@ -13,6 +13,16 @@ struct PhotoAndArtTests {
         #expect(found[0].unit == .pieces)
     }
 
+    @Test func cleanKeepsLabelAmountsForThingsThatArentCounted() {
+        let items = [DetectedItem(name: "skim milk", count: 0, amount: 3.8, unit: "L"),
+                     DetectedItem(name: "egg", count: 6, amount: 0, unit: ""),
+                     DetectedItem(name: "rice", count: 0, amount: 2, unit: "bags")]
+        let found = IngredientDetector.clean(items, excluding: [],
+                                             corrections: ScanCorrections(defaults: UserDefaults(suiteName: UUID().uuidString)!))
+        #expect(found.map(\.quantity) == [3.8, 6, nil])
+        #expect(found.map(\.unit) == [.liters, .pieces, nil])
+    }
+
     @Test func correctionsIgnoreNoOpsAndBecomeHints() {
         var corrections = ScanCorrections(defaults: UserDefaults(suiteName: UUID().uuidString)!)
         corrections.record(from: "egg", to: " Egg ")

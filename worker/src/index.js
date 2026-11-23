@@ -17,7 +17,9 @@ const SCAN_PROMPT = "List the food ingredients someone could cook with that you 
   "printed on a package (name the product instead), plain water, soda, containers whose contents you can't tell (never just \"can\" or \"jar\"), " +
   "brands and non-food items. Use lowercase singular grocery names and list each ingredient once. count is how many " +
   "whole pieces you can see, like 9 mushrooms, 6 eggs, 3 pears or 2 cans of tomatoes; use 0 only for things " +
-  "measured by amount, like milk, juice, sliced cheese, rice or flour.";
+  "measured by amount, like milk, juice, sliced cheese, rice or flour. For those, amount and unit say how much " +
+  "there is: read the size on the label (a gallon of milk is 3.8 L, a 16 oz block of cheese is 16 oz), or " +
+  "estimate what's left from how full it looks; amount is 0 when you can't tell.";
 
 export default {
   async fetch(request, env) {
@@ -105,8 +107,9 @@ async function scan(request, env) {
             type: "OBJECT",
             properties: { items: { type: "ARRAY", items: {
               type: "OBJECT",
-              properties: { name: { type: "STRING" }, count: { type: "INTEGER" } },
-              required: ["name", "count"],
+              properties: { name: { type: "STRING" }, count: { type: "INTEGER" }, amount: { type: "NUMBER" },
+                unit: { type: "STRING", enum: ["g", "kg", "ml", "L", "lb", "oz", ""] } },
+              required: ["name", "count", "amount", "unit"],
             } } },
             required: ["items"],
           },
@@ -127,9 +130,11 @@ async function readTwice(env, request) {
   const both = await Promise.race([Promise.allSettled(reads), new Promise((resolve) => setTimeout(resolve, 1_500))]);
   const lists = both ? both.filter((r) => r.status === "fulfilled").map((r) => r.value) : [first];
   const merged = new Map();
-  for (const { name, count } of lists.flat()) {
-    const key = name.trim().toLowerCase();
-    merged.set(key, { name: key, count: Math.max(count, merged.get(key)?.count ?? 0) });
+  for (const item of lists.flat()) {
+    const key = item.name.trim().toLowerCase();
+    const seen = merged.get(key);
+    merged.set(key, { ...item, ...seen, name: key, count: Math.max(item.count, seen?.count ?? 0),
+      ...(!seen?.amount && item.amount ? { amount: item.amount, unit: item.unit } : {}) });
   }
   // "butter" next to "salted butter" is the same thing; keep the more specific name.
   const names = [...merged.keys()];
@@ -146,7 +151,7 @@ async function groqScan(env, prompt, image) {
     body: JSON.stringify({
       model: "qwen/qwen3.8-27b",
       messages: [{ role: "user", content: [
-        { type: "text", text: `${prompt} Answer only with JSON like {"items":[{"name":"egg","count":6}]}.` },
+        { type: "text", text: `${prompt} Answer only with JSON like {"items":[{"name":"egg","count":6,"amount":0,"unit":""},{"name":"skim milk","count":0,"amount":3.8,"unit":"L"}]}.` },
         { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
       ] }],
       response_format: { type: "json_object" },
@@ -273,3 +278,4 @@ async function gemini(env, request, hedge, timeout) {
     throw new Error(error.errors.map(String).join(" | "));
   }
 }
+
