@@ -9,10 +9,15 @@ const STYLE = "real photo taken with a DSLR for a food delivery app menu, as act
   "restaurant, 45 degree angle, natural daylight, true-to-life colors, real textures, crumbs and " +
   "imperfections, simple plate on a wooden table, no text, no hands";
 
-const SCAN_PROMPT = "List every food ingredient you can see in this photo of a fridge, pantry or kitchen counter. " +
-  "Only things you can actually see; skip containers, brands and non-food items. Read labels on jars, cartons " +
-  "and cans. Use plain grocery names in the singular, lowercase, like \"egg\", \"bell pepper\" or \"soy sauce\". " +
-  "count is how many separate pieces you can count, or 0 if it isn't countable, like milk or rice.";
+const SCAN_PROMPT = "List the food ingredients someone could cook with that you can see in this photo of a fridge, " +
+  "freezer, pantry, kitchen counter or groceries. Check every shelf, drawer, door bin and bag. Read the labels on " +
+  "bottles, jars, cartons, cans and packets, and name what's inside as specifically as a shopping list would: " +
+  "\"canola oil\" not \"oil\", \"sweet chili sauce\" not \"sauce\", \"skim milk\", \"cheddar cheese\". Only list " +
+  "what is really there: skip empty packaging, trash, peels, pictures printed on packaging, the ingredient list " +
+  "printed on a package (name the product instead), plain water, soda, containers whose contents you can't tell (never just \"can\" or \"jar\"), " +
+  "brands and non-food items. Use lowercase singular grocery names and list each ingredient once. count is how many " +
+  "whole pieces you can see, like 9 mushrooms, 6 eggs, 3 pears or 2 cans of tomatoes; use 0 only for things " +
+  "measured by amount, like milk, juice, sliced cheese, rice or flour.";
 
 export default {
   async fetch(request, env) {
@@ -89,7 +94,7 @@ async function scan(request, env) {
   const image = btoa(base64);
   let text;
   try {
-    text = await gemini(env, {
+    text = await readTwice(env, {
         contents: [{ parts: [
           { text: prompt },
           { inline_data: { mime_type: "image/jpeg", data: image } },
@@ -106,12 +111,31 @@ async function scan(request, env) {
             required: ["items"],
           },
         },
-      }, 2_500, 5_000);
+      });
   } catch (error) {
     if (!env.GROQ_KEY || new URL(request.url).searchParams.has("gemini")) throw error;
     text = await groqScan(env, prompt, image);  // Gemini's free quota ran out or Google is down
   }
   return new Response(text, { headers: { "content-type": "application/json" } });
+}
+
+// Flash-Lite sometimes stops after the first few things it sees, so two reads run at once and their lists are
+// merged. The second gets 1.5 s more than the first, so a slow one doesn't hold up the scan.
+async function readTwice(env, request) {
+  const reads = [0, 1].map(() => gemini(env, request, 2_500, 5_000).then((text) => JSON.parse(text).items));
+  const first = await Promise.any(reads);
+  const both = await Promise.race([Promise.allSettled(reads), new Promise((resolve) => setTimeout(resolve, 1_500))]);
+  const lists = both ? both.filter((r) => r.status === "fulfilled").map((r) => r.value) : [first];
+  const merged = new Map();
+  for (const { name, count } of lists.flat()) {
+    const key = name.trim().toLowerCase();
+    merged.set(key, { name: key, count: Math.max(count, merged.get(key)?.count ?? 0) });
+  }
+  // "butter" next to "salted butter" is the same thing; keep the more specific name.
+  const names = [...merged.keys()];
+  const items = [...merged.values()].filter(({ name }) =>
+    !names.some((other) => other !== name && (other.endsWith(` ${name}`) || other.startsWith(`${name} `))));
+  return JSON.stringify({ items });
 }
 
 async function groqScan(env, prompt, image) {
@@ -130,7 +154,9 @@ async function groqScan(env, prompt, image) {
     }),
   });
   if (!response.ok) throw new Error(`groq ${response.status}: ${(await response.text()).slice(0, 300)}`);
-  return (await response.json()).choices[0].message.content;
+  // Qwen sometimes answers with the bare list instead of {"items": [...]}.
+  const answer = JSON.parse((await response.json()).choices[0].message.content);
+  return JSON.stringify(Array.isArray(answer) ? { items: answer } : answer);
 }
 
 const RECIPE_RULES = "You are a home cook writing recipes for a cookbook. Pick the few ingredients from the user's list that " +
