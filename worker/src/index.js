@@ -42,8 +42,8 @@ async function photo(url, env) {
   return new Response(await dishPhoto(env, title), { headers });
 }
 
-// A real stock photo of the dish, found with the photo search the recipe AI wrote ("spinach omelette"), else with
-// the title. When no photo is tagged with the dish, a picture is made from the title (capped at 3 s).
+// A real stock photo of exactly this dish, found with the photo search the recipe AI wrote ("spinach omelette"),
+// else with the title. When no photo shows it, a picture is made from the title (capped at 3 s).
 async function dishPhoto(env, rawTitle, query) {
   const title = rawTitle.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
   const known = await env.PHOTOS.get(`dish:${title}`, "arrayBuffer");
@@ -63,8 +63,9 @@ async function dishPhoto(env, rawTitle, query) {
   }
 }
 
-// The best-matching Pixabay photo no other dish has, in about a second: searches "garlic butter steak", then
-// "butter steak", then "steak". Pixabay asks that photos be copied to our own server, so they're kept in KV.
+// A Pixabay photo showing exactly this dish that no other dish has: from the shared list of checked photos, else
+// searched ("garlic butter steak", then "butter steak", then "steak") and looked at. Pixabay asks that photos be
+// copied to our own server, so they're kept in KV.
 const PROTEINS = ["shrimp", "prawn", "chicken", "beef", "pork", "bacon", "ham", "sausage", "salmon", "tuna", "fish",
   "meat", "lamb", "turkey", "crab", "lobster", "steak", "mussels", "squid"];
 const RAW = ["raw", "plant", "garden", "growing", "grow", "harvest", "field", "seedling", "agriculture", "market",
@@ -84,6 +85,15 @@ async function stockPhoto(env, title, query, anyDish = false) {
   // The dish goes last ("pasta mushroom" searches as "mushroom pasta"), since searches drop words from the front.
   const dish = words.findLast((word) => DISHES.includes(word.replace(/e?s$/, "")));
   if (dish) words.push(...words.splice(words.indexOf(dish), 1));
+  const dishName = words.join(" ");
+  // Photos already checked to show exactly this dish, for anyone: the first one no dish has taken is used at once.
+  const library = JSON.parse(await env.PHOTOS.get(`verified:${dishName}`) ?? "[]");
+  const libraryUsed = await Promise.all(library.map((photo) => env.PHOTOS.get(`claimed:${photo.id}`)));
+  const ready = library.find((photo, j) => !libraryUsed[j] && !taking.has(photo.id));
+  if (ready && !anyDish) {
+    const bytes = await keep(env, title, ready.id);
+    if (bytes) return bytes;
+  }
   const searches = await Promise.all(words.slice(0, 3).map((_, i) =>
     fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
       `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(words.slice(i).join(" "))}`,
@@ -103,49 +113,70 @@ async function stockPhoto(env, title, query, anyDish = false) {
     .sort((a, b) => score(b) - score(a));
   // Each photo goes to one dish only, so similar titles don't share a picture.
   const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`claimed:${hit.id}`)));
-  const free = hits.filter((hit, j) => !used[j]).slice(0, 10);
-  const choice = anyDish ? 0 : await pickByTags(env, title, free);
-  if (choice < 0) return null;
+  const free = hits.filter((hit, j) => !used[j] && !taking.has(hit.id) && !library.some((p) => p.id === hit.id));
+  // A stand-in when nothing exact can be had today; kept 6 hours, so the dish gets an exact photo later.
+  if (anyDish) return free[0] ? await keep(env, title, free[0].id, free[0].largeImageURL, 6 * 3600) : null;
+  // Looked at, not guessed from tags: only photos that really show this dish count.
+  const exact = await exactPhotos(env, dishName, title, free.slice(0, 6));
+  if (!exact?.length) return null;
+  // Every sure match is shared, so the next "spinach omelette" anyone gets needs no looking.
+  await env.PHOTOS.put(`verified:${dishName}`, JSON.stringify([...library, ...exact.map((hit) => ({ id: hit.id }))]));
+  for (const hit of exact) {
+    const bytes = await keep(env, title, hit.id, hit.largeImageURL);
+    if (bytes) return bytes;
+  }
+  return null;
+}
+
+// Saves Pixabay photo `id` as this dish's photo and marks it taken, or null if it can't be had. `url` is a link from
+// a search just made; photos from the shared list have none, since links expire, so Pixabay is asked for one.
+async function keep(env, title, id, url, ttl) {
   // Taken here at once, with no wait in between, so dishes looked up at the same moment can't pick the same one.
-  const pick = [free[choice], ...free].find((hit) => hit && !taking.has(hit.id));
-  if (!pick) return null;
-  taking.add(pick.id);
-  const image = await fetch(pick.largeImageURL);
+  if (taking.has(id)) return null;
+  taking.add(id);
+  url ??= await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&id=${id}`,
+    { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
+    .then((r) => (r.ok ? r.json() : {}), () => ({})).then((found) => found.hits?.[0]?.largeImageURL);
+  if (!url) return null;
+  const image = await fetch(url);
   // Pixabay answers "Rate limit exceeded" as text when busy; that must never be saved as the dish's photo.
   if (!image.ok || !image.headers.get("content-type")?.startsWith("image/")) return null;
   const bytes = await image.arrayBuffer();
-  await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes), env.PHOTOS.put(`claimed:${pick.id}`, title)]);
+  const options = ttl ? { expirationTtl: ttl } : {};
+  await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes, options), env.PHOTOS.put(`claimed:${id}`, title, options)]);
   return bytes;
 }
 
-// Tags show what my filters miss: "raclette" or "sea urchin" next to "pasta" or "salmon". Groq reads each photo's
-// tags and picks the one showing exactly this dish as served, -1 for none, in about half a second. If it's slow
-// or down, the best-ranked photo (0) is used.
-async function pickByTags(env, title, hits) {
-  if (hits.length === 0) return -1;
-  if (!env.GROQ_KEY) return 0;
+// Gemini looks at the photos and says which show exactly this dish: the photos that do, [] for none, or null when
+// it's busy. Two Flash-Lite versions are asked at once (each has its own capacity) and the first answer wins.
+async function exactPhotos(env, dishName, title, hits) {
+  if (hits.length === 0) return [];
+  if (!env.GEMINI_KEY) return null;
+  const images = await Promise.all(hits.map(async (hit) => {
+    const bytes = new Uint8Array(await (await fetch(hit.webformatURL.replace("_640", "_340"))).arrayBuffer());
+    return { inline_data: { mime_type: "image/jpeg", data: bytes.toBase64() } };
+  }));
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: `These are photos 0 to ${hits.length - 1}. Which of them show exactly ` +
+      `"${dishName}" (from a recipe called "${title}"), cooked and served? It must be the same kind of dish (a ` +
+      "hamburger is not a sandwich, raclette is not pasta, a buffet or a table of foods is not one dish, plain rice " +
+      "is not fried rice) with its main named ingredient visible, and no meat or seafood the dish doesn't have. " +
+      "Raw ingredients, text, or any doubt mean no." }, ...images] }],
+    generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT",
+      properties: { exact: { type: "ARRAY", items: { type: "INTEGER" } } }, required: ["exact"] } },
+  });
+  const ask = async (model) => {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      { method: "POST", body, signal: AbortSignal.timeout(6_000),
+        headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_KEY } });
+    if (!response.ok) throw new Error(`${model} ${response.status}`);
+    return JSON.parse((await response.json()).candidates[0].content.parts[0].text).exact;
+  };
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      signal: AbortSignal.timeout(1_500),
-      headers: { "content-type": "application/json", authorization: `Bearer ${env.GROQ_KEY}` },
-      body: JSON.stringify({
-        model: "openai/gpt-oss-20b",  // its own free limits, so picking photos never slows recipe writing
-        reasoning_effort: "low",
-        messages: [{ role: "user", content: `A recipe is called "${title}". These stock photos are described by ` +
-          `their tags:\n${hits.map((hit, i) => `${i}: ${hit.tags}`).join("\n")}\nWhich one most likely shows ` +
-          "exactly this finished dish, cooked and served? Tags naming a different dish (a burger for a sandwich, " +
-          "raclette for pasta), meat or seafood the recipe doesn't have, or raw ingredients rule a photo out. " +
-          "Answer -1 if none fits." }],
-        response_format: { type: "json_schema", json_schema: { name: "pick", strict: true, schema: {
-          type: "object", properties: { photo: { type: "integer" } }, required: ["photo"], additionalProperties: false } } },
-      }),
-    });
-    if (!response.ok) return 0;
-    const { photo } = JSON.parse((await response.json()).choices[0].message.content);
-    return photo >= 0 && photo < hits.length ? photo : -1;
+    const exact = await Promise.any(["gemini-3.5-flash-lite", "gemini-flash-lite-latest"].map(ask));
+    return [...new Set(exact)].filter((i) => hits[i]).map((i) => hits[i]);
   } catch {
-    return 0;
+    return null;
   }
 }
 
