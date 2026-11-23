@@ -40,9 +40,12 @@ struct DetectionReviewSheet: View {
         } else if let message = viewModel.detectionError {
             ContentUnavailableView("Couldn't read that photo", systemImage: "photo.badge.exclamationmark",
                                    description: Text(message))
+        } else if viewModel.detected.isEmpty, !viewModel.alreadyInPantry.isEmpty {
+            ContentUnavailableView("Already in your pantry", systemImage: "checkmark.circle",
+                                   description: Text("Found \(viewModel.alreadyInPantry.formatted(.list(type: .and))), which you already have."))
         } else if viewModel.detected.isEmpty {
-            ContentUnavailableView("No new ingredients spotted", systemImage: "eye.slash",
-                                   description: Text("Everything in the photo is already in your pantry, or try a closer, brighter shot."))
+            ContentUnavailableView("No ingredients spotted", systemImage: "eye.slash",
+                                   description: Text("Try a closer, brighter shot."))
         } else {
             List {
                 Section {
