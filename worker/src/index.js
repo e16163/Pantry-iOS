@@ -42,47 +42,111 @@ async function photo(url, env) {
   return new Response(await dishPhoto(env, title), { headers });
 }
 
-// A new dish gets a picture made from its title in 1-3 s: it shows exactly this dish and no other dish has it.
-// When the free daily pictures (about 100) run out, or one takes over 3 s, a Pixabay photo is used instead.
-async function dishPhoto(env, rawTitle) {
+// A real stock photo of the dish, found with the photo search the recipe AI wrote ("spinach omelette"), else with
+// the title. When no photo is tagged with the dish, a picture is made from the title (capped at 3 s).
+async function dishPhoto(env, rawTitle, query) {
   const title = rawTitle.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
-  const [known, saved] = await Promise.all([env.PHOTOS.get(`dish:${title}`, "arrayBuffer"),
-    env.PHOTOS.get(`made:${title}`, "arrayBuffer")]);
-  if (known ?? saved) return known ?? saved;
+  const known = await env.PHOTOS.get(`dish:${title}`, "arrayBuffer");
+  if (known) return known;
+  const stock = env.PIXABAY_KEY && await stockPhoto(env, title, query).catch(() => null);
+  if (stock) return stock;
+  const saved = await env.PHOTOS.get(`made:${title}`, "arrayBuffer");
+  if (saved) return saved;
   try {
     return await Promise.race([madePhoto(env, title),
       new Promise((_, reject) => setTimeout(reject, 3_000, new Error("picture took over 3 s")))]);
   } catch (error) {
-    const real = env.PIXABAY_KEY && await stockPhoto(env, title);
-    if (!real) throw error;
-    return real;
+    // Free pictures used up for the day: the closest stock photo beats a blank card.
+    const close = env.PIXABAY_KEY && await stockPhoto(env, title, query, true).catch(() => null);
+    if (!close) throw error;
+    return close;
   }
 }
 
-// The closest Pixabay photo no other dish has, in about a second: searches "garlic butter steak", then
+// The best-matching Pixabay photo no other dish has, in about a second: searches "garlic butter steak", then
 // "butter steak", then "steak". Pixabay asks that photos be copied to our own server, so they're kept in KV.
-// shortcut: close, not always exact (a Gemini check took 3-13 s); only used when made pictures run out.
-async function stockPhoto(env, title) {
+const PROTEINS = ["shrimp", "prawn", "chicken", "beef", "pork", "bacon", "ham", "sausage", "salmon", "tuna", "fish",
+  "meat", "lamb", "turkey", "crab", "lobster", "steak", "mussels", "squid"];
+const RAW = ["raw", "plant", "garden", "growing", "grow", "harvest", "field", "seedling", "agriculture", "market",
+  "ingredient", "uncooked", "isolated", "dough", "farm", "organic"];
+const DISHES = ["soup", "stew", "chili", "salad", "taco", "burrito", "bowl", "pasta", "noodle", "spaghetti", "curry",
+  "sandwich", "toast", "pizza", "burger", "smoothie", "pancake", "waffle", "omelette", "omelet", "rice", "cake", "pie",
+  "wrap", "quesadilla", "fry", "hash", "skewer", "kebab", "dumpling", "roll", "risotto", "casserole", "frittata",
+  "scramble", "bake", "gratin", "lasagna", "salmon", "steak", "bruschetta", "muffin", "porridge", "oatmeal"];
+// Photos being saved by this server right now, so two dishes at once don't both take the same one.
+const taking = new Set();
+const SERVED = ["dish", "plate", "meal", "dinner", "lunch", "breakfast", "served", "cuisine", "delicious", "tasty"];
+
+async function stockPhoto(env, title, query, anyDish = false) {
   // Words that describe the cooking, not the dish, only confuse a photo search.
   const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
-  const words = title.split(" ").filter((word) => !filler.test(word));
+  const words = String(query || title).toLowerCase().split(/[^a-z]+/).filter((word) => word && !filler.test(word));
+  // The dish goes last ("pasta mushroom" searches as "mushroom pasta"), since searches drop words from the front.
+  const dish = words.findLast((word) => DISHES.includes(word.replace(/e?s$/, "")));
+  if (dish) words.push(...words.splice(words.indexOf(dish), 1));
   const searches = await Promise.all(words.slice(0, 3).map((_, i) =>
     fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
       `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(words.slice(i).join(" "))}`,
       { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
       .then((response) => (response.ok ? response.json() : {})).then((json) => json.hits ?? [], () => [])));
-  // Most specific search first, each photo once.
-  const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()];
+  // Only photos tagged with the dish itself (the last word: "quesadilla", not "beef" or "cheese"), most specific
+  // search first, each once; among those, more matching words go first (a stable sort keeps search order).
+  const tagged = (hit, word) => hit.tags.toLowerCase().includes(word.replace(/e?s$/, ""));
+  // More of the search words, then tags that say it's a served meal.
+  const score = (hit) => words.filter((word) => tagged(hit, word)).length + (SERVED.some((word) => tagged(hit, word)) ? 0.5 : 0);
+  const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()]
+    .filter((hit) => anyDish || tagged(hit, words.at(-1)))
+    // A photo with meat or seafood the dish doesn't have is a different dish: shrimp pasta isn't spinach pasta.
+    .filter((hit) => !PROTEINS.some((meat) => tagged(hit, meat) && !title.includes(meat.replace(/e?s$/, ""))))
+    // Growing plants and raw ingredients aren't a cooked dish.
+    .filter((hit) => !RAW.some((word) => tagged(hit, word)))
+    .sort((a, b) => score(b) - score(a));
   // Each photo goes to one dish only, so similar titles don't share a picture.
   const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`claimed:${hit.id}`)));
-  const pick = hits.find((_, j) => !used[j]);
+  const free = hits.filter((hit, j) => !used[j]).slice(0, 10);
+  const choice = anyDish ? 0 : await pickByTags(env, title, free);
+  if (choice < 0) return null;
+  // Taken here at once, with no wait in between, so dishes looked up at the same moment can't pick the same one.
+  const pick = [free[choice], ...free].find((hit) => hit && !taking.has(hit.id));
   if (!pick) return null;
+  taking.add(pick.id);
   const image = await fetch(pick.largeImageURL);
   // Pixabay answers "Rate limit exceeded" as text when busy; that must never be saved as the dish's photo.
   if (!image.ok || !image.headers.get("content-type")?.startsWith("image/")) return null;
   const bytes = await image.arrayBuffer();
   await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes), env.PHOTOS.put(`claimed:${pick.id}`, title)]);
   return bytes;
+}
+
+// Tags show what my filters miss: "raclette" or "sea urchin" next to "pasta" or "salmon". Groq reads each photo's
+// tags and picks the one showing exactly this dish as served, -1 for none, in about half a second. If it's slow
+// or down, the best-ranked photo (0) is used.
+async function pickByTags(env, title, hits) {
+  if (hits.length === 0) return -1;
+  if (!env.GROQ_KEY) return 0;
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      signal: AbortSignal.timeout(1_500),
+      headers: { "content-type": "application/json", authorization: `Bearer ${env.GROQ_KEY}` },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-20b",  // its own free limits, so picking photos never slows recipe writing
+        reasoning_effort: "low",
+        messages: [{ role: "user", content: `A recipe is called "${title}". These stock photos are described by ` +
+          `their tags:\n${hits.map((hit, i) => `${i}: ${hit.tags}`).join("\n")}\nWhich one most likely shows ` +
+          "exactly this finished dish, cooked and served? Tags naming a different dish (a burger for a sandwich, " +
+          "raclette for pasta), meat or seafood the recipe doesn't have, or raw ingredients rule a photo out. " +
+          "Answer -1 if none fits." }],
+        response_format: { type: "json_schema", json_schema: { name: "pick", strict: true, schema: {
+          type: "object", properties: { photo: { type: "integer" } }, required: ["photo"], additionalProperties: false } } },
+      }),
+    });
+    if (!response.ok) return 0;
+    const { photo } = JSON.parse((await response.json()).choices[0].message.content);
+    return photo >= 0 && photo < hits.length ? photo : -1;
+  } catch {
+    return 0;
+  }
 }
 
 // FLUX.1 schnell: about 1.5 s a picture, where FLUX.2 klein looked a little more real but took 5 s or more.
@@ -183,7 +247,11 @@ const RECIPE_RULES = "You are a home cook writing recipes for a cookbook. Pick t
   "plus basic staples: salt, pepper, oil, and water. Never add other ingredients. Name each ingredient exactly as " +
   "it appears in the user's list. Give an amount for every ingredient, for 2 servings, in the same order. " +
   "Write 5 to 8 steps a beginner can follow without guessing: how to cut things, the heat level, how many " +
-  "minutes, and what it should look, smell or feel like when it's done.";
+  "minutes, and what it should look, smell or feel like when it's done." +
+  " photo is the 2 or 3 words you'd type into a stock-photo site to find this finished dish as served: its one " +
+  "main visible ingredient, then the most common name for the kind of dish, which always comes last, like " +
+  "\"spinach omelette\", \"beef tacos\", \"egg fried rice\", \"chicken stir fry\", \"cheese quesadilla\" or " +
+  "\"grilled cheese sandwich\". No cooking words like easy, quick or homemade.";
 
 async function recipes(request, env) {
   const { ingredients, maxMinutes, excluding } = await request.json();
@@ -199,8 +267,10 @@ async function recipes(request, env) {
   // Each recipe's photo is made as soon as that recipe is written, so the app's photo requests find it saved.
   const results = await Promise.allSettled(kinds.map((kind) => oneRecipe(env,
     `Write 1 recipe for ${kind}. Choose from these ingredients: ${list(ingredients, 80)}.${rules}`)
-    .then(async (recipe) => { await dishPhoto(env, recipe.title).catch(() => {}); return recipe; })));
-  const found = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+    .then(async (recipe) => { await dishPhoto(env, recipe.title, recipe.photo).catch(() => {}); return recipe; })));
+  // The same title twice is one dish shown twice, with one photo.
+  const found = [...new Map(results.filter((r) => r.status === "fulfilled")
+    .map((r) => [r.value.title.toLowerCase(), r.value])).values()];
   if (found.length === 0) throw results[0].reason;
   return Response.json({ recipes: found });
 }
@@ -214,8 +284,9 @@ const RECIPE_SCHEMA = {
     ingredients: { type: "array", items: { type: "string" } },
     amounts: { type: "array", items: { type: "string" } },
     steps: { type: "array", items: { type: "string" } },
+    photo: { type: "string" },
   },
-  required: ["title", "minutes", "difficulty", "ingredients", "amounts", "steps"],
+  required: ["title", "minutes", "difficulty", "ingredients", "amounts", "steps", "photo"],
   additionalProperties: false,
 };
 
@@ -262,8 +333,9 @@ async function geminiRecipe(env, prompt) {
           ingredients: { type: "ARRAY", items: { type: "STRING" } },
           amounts: { type: "ARRAY", items: { type: "STRING" } },
           steps: { type: "ARRAY", items: { type: "STRING" } },
+          photo: { type: "STRING" },
         },
-        required: ["title", "minutes", "difficulty", "ingredients", "amounts", "steps"],
+        required: ["title", "minutes", "difficulty", "ingredients", "amounts", "steps", "photo"],
       },
     },
   }, 3_000, 12_000);
