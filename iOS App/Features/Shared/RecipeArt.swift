@@ -17,6 +17,21 @@ enum RecipeArt {
             + (realOnly ? [URLQueryItem(name: "real", value: "1")] : []))
     }
 
+    /// The photo a card shows for this title: a real photo, or for dishes without a bundled one, any picture.
+    static func photoURL(title: String) -> URL {
+        onlinePhoto(title: title, realOnly: photo(title: title) != nil)
+    }
+
+    /// Downloads these dishes' photos into the shared cache, so their cards show them right away.
+    static func prefetchPhotos(_ titles: [String]) async {
+        let urls = titles.map(photoURL)
+        await withTaskGroup(of: Void.self) { group in
+            for url in urls {
+                group.addTask { _ = try? await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 4)) }
+            }
+        }
+    }
+
     struct Dish: Decodable {
         let photo: String
         /// Words a title is matched against, like "quesadilla quesadillas".
@@ -135,7 +150,7 @@ struct RecipePicture: View {
 
     var body: some View {
         let bundled = RecipeArt.photo(title: title)
-        AsyncImage(url: RecipeArt.onlinePhoto(title: title, realOnly: bundled != nil)) { phase in
+        AsyncImage(url: RecipeArt.photoURL(title: title)) { phase in
             if let image = phase.image {
                 Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
             } else if let bundled {
@@ -151,7 +166,7 @@ struct RecipePicture: View {
         .overlay {
             ZStack {
                 Color.black.opacity(0.06)
-                RadialGradient(colors: [.clear, .black.opacity(0.45)], center: .center, startRadius: 50, endRadius: 300)
+                RadialGradient(colors: [.clear, .black.opacity(0.55)], center: .center, startRadius: 40, endRadius: 280)
             }
         }
         .accessibilityHidden(true)

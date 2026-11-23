@@ -47,10 +47,14 @@ async function photo(url, env) {
       console.log(`pixabay ${search.status} limit=${search.headers.get("x-ratelimit-limit")} left=${search.headers.get("x-ratelimit-remaining")} reset=${search.headers.get("x-ratelimit-reset")}`);
       // A served plate, not raw ingredients on a table: "pasta" alone mostly finds dry noodles.
       const hits = search.ok ? ((await search.json()).hits ?? []).filter((hit) => !/raw|uncooked|ingredient|dry|dried/.test(hit.tags)) : [];
-      const found = (hits.find((hit) => /dish|meal|plate|dinner|lunch|breakfast|cooked|served/.test(hit.tags)) ?? hits[0])?.largeImageURL;
-      if (found) {
-        const bytes = await (await fetch(found)).arrayBuffer();
-        await env.PHOTOS.put(`real:${title}`, bytes);
+      const plated = (hit) => /dish|meal|plate|dinner|lunch|breakfast|cooked|served/.test(hit.tags);
+      const candidates = [...hits.filter(plated), ...hits.filter((hit) => !plated(hit))].slice(0, 8);
+      // Each photo goes to one dish only, so similar titles don't share a picture.
+      const used = await Promise.all(candidates.map((hit) => env.PHOTOS.get(`used:${hit.id}`)));
+      const pick = candidates.find((_, j) => !used[j]);
+      if (pick) {
+        const bytes = await (await fetch(pick.largeImageURL)).arrayBuffer();
+        await Promise.all([env.PHOTOS.put(`real:${title}`, bytes), env.PHOTOS.put(`used:${pick.id}`, title)]);
         return new Response(bytes, { headers });
       }
     }
@@ -81,10 +85,14 @@ async function scan(request, env) {
   let base64 = "";
   for (let i = 0; i < photo.length; i += 0x8000) base64 += String.fromCharCode(...photo.subarray(i, i + 0x8000));
 
-  const text = await gemini(env, {
+  const prompt = hints ? `${SCAN_PROMPT} This user has corrected past scans: ${hints}.` : SCAN_PROMPT;
+  const image = btoa(base64);
+  let text;
+  try {
+    text = await gemini(env, {
         contents: [{ parts: [
-          { text: hints ? `${SCAN_PROMPT} This user has corrected past scans: ${hints}.` : SCAN_PROMPT },
-          { inline_data: { mime_type: "image/jpeg", data: btoa(base64) } },
+          { text: prompt },
+          { inline_data: { mime_type: "image/jpeg", data: image } },
         ] }],
         generationConfig: {
           responseMimeType: "application/json",
@@ -98,8 +106,31 @@ async function scan(request, env) {
             required: ["items"],
           },
         },
-      }, 2_500, 8_000);
+      }, 2_500, 5_000);
+  } catch (error) {
+    if (!env.GROQ_KEY || new URL(request.url).searchParams.has("gemini")) throw error;
+    text = await groqScan(env, prompt, image);  // Gemini's free quota ran out or Google is down
+  }
   return new Response(text, { headers: { "content-type": "application/json" } });
+}
+
+async function groqScan(env, prompt, image) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    signal: AbortSignal.timeout(10_000),
+    headers: { "content-type": "application/json", authorization: `Bearer ${env.GROQ_KEY}` },
+    body: JSON.stringify({
+      model: "qwen/qwen3.8-27b",
+      messages: [{ role: "user", content: [
+        { type: "text", text: `${prompt} Answer only with JSON like {"items":[{"name":"egg","count":6}]}.` },
+        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
+      ] }],
+      response_format: { type: "json_object" },
+      max_tokens: 500,  // the free tier allows 1,000 output tokens a minute on this model
+    }),
+  });
+  if (!response.ok) throw new Error(`groq ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  return (await response.json()).choices[0].message.content;
 }
 
 const RECIPE_RULES = "You are a home cook writing recipes for a cookbook. Pick the few ingredients from the user's list that " +
@@ -193,7 +224,7 @@ async function geminiRecipe(env, prompt) {
 }
 
 // Flash-Lite answers fast. When Google is overloaded it can hang, so if it hasn't answered in `hedge` ms
-// Flash is asked too, and whichever answers first wins. Each call gives up after `timeout` ms.
+// (or has failed) Flash is asked too, and whichever answers first wins. Each call gives up after `timeout` ms.
 async function gemini(env, request, hedge, timeout) {
   const body = JSON.stringify(request);
   const ask = async (model) => {
@@ -204,10 +235,12 @@ async function gemini(env, request, hedge, timeout) {
     if (!response.ok) throw new Error(`${model} ${response.status}: ${(await response.text()).slice(0, 300)}`);
     return (await response.json()).candidates[0].content.parts[0].text;
   };
-  let done = false;
-  const lite = ask("gemini-flash-lite-latest").finally(() => { done = true; });
-  const backup = new Promise((resolve) => setTimeout(resolve, hedge))
-    .then(() => (done ? lite : ask("gemini-flash-latest")));
+  let answered = false;
+  const lite = ask("gemini-flash-lite-latest");
+  lite.then(() => { answered = true; }, () => {});
+  // Flash also starts right away if Flash-Lite fails, like when its free daily quota is used up.
+  const backup = new Promise((resolve) => { setTimeout(resolve, hedge); lite.catch(resolve); })
+    .then(() => (answered ? lite : ask("gemini-flash-latest")));
   try {
     return await Promise.any([lite, backup]);
   } catch (error) {
