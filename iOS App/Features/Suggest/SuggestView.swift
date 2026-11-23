@@ -167,12 +167,6 @@ struct SuggestView: View {
                 }
                 .buttonStyle(.primary)
                 .disabled(viewModel.isLoadingMore)
-                // Reaching the bottom loads more on its own, again whenever a search finishes or new recipes
-                // land while it's still in view. A load that adds nothing stops it; the button is the retry.
-                .task(id: "\(viewModel.recipes.count) \(viewModel.isGenerating)") {
-                    guard !viewModel.isLoadingMore, !viewModel.isGenerating else { return }
-                    Task { await viewModel.loadMore() }  // unstructured, so scrolling away doesn't cancel the model call
-                }
             } else {
                 Text("That's every recipe that fits your pantry right now.")
                     .font(.footnote)

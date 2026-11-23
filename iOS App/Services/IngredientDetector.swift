@@ -37,8 +37,8 @@ struct Detection: Identifiable, Equatable {
 }
 
 /// Spots ingredients in a photo: Gemini reads it (with counts) through Pantry's Worker; offline, or once the free
-/// daily limit is used up, Apple Intelligence reads it on iOS 27, and Vision's built-in object labels matched to
-/// the ingredient catalog always add whatever they find.
+/// daily limit is used up, Apple Intelligence reads it on iOS 27; only if neither can, Vision's built-in object
+/// labels matched to the ingredient catalog are used.
 struct IngredientDetector {
     private let session: LanguageModelSession
     private let hints: [String]
@@ -68,7 +68,7 @@ struct IngredientDetector {
     }
 
     func ingredients(in image: CGImage) async throws -> [DetectedItem] {
-        // Vision runs alongside, to catch items the model skipped.
+        // Vision runs alongside, in case no model can read the photo.
         // Needs a real device: the simulator can't run Vision's classifier.
         async let visionLabels = try? ClassifyImageRequest().perform(on: image)
             .filter { $0.confidence >= 0.05 }
@@ -78,9 +78,10 @@ struct IngredientDetector {
         if modelItems.isEmpty, #available(iOS 27, macOS 27, visionOS 27, *), Self.modelCanSee {
             modelItems = (try? await modelIngredients(in: image)) ?? []
         }
-        let labels = await visionLabels
-        if modelItems.isEmpty && labels == nil { throw CocoaError(.fileReadCorruptFile) }
-        return modelItems + Self.catalogNames(fromLabels: labels ?? []).map { DetectedItem(name: $0, count: 0) }
+        // Vision's labels are rough guesses (a block of cheese came back "mango"), so they're only a last resort.
+        if !modelItems.isEmpty { return modelItems }
+        guard let labels = await visionLabels else { throw CocoaError(.fileReadCorruptFile) }
+        return Self.catalogNames(fromLabels: labels).map { DetectedItem(name: $0, count: 0) }
     }
 
     /// Vision labels ("bell_pepper", "fruit", "eggs") kept only when they name a catalog ingredient.

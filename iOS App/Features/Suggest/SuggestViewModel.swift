@@ -56,12 +56,15 @@ final class SuggestViewModel {
         run += 1
         let thisRun = run
         recipes = FallbackRecipes.best(for: names, maxMinutes: limit)
+        let bookTitles = recipes.map(\.title)
+        Task { await RecipeArt.prefetchPhotos(bookTitles) }
         isGenerating = true
         defer { if run == thisRun { isGenerating = false } }
         do {
             let shown = Set(recipes.map(\.title))
             let fresh = try await generator.recipes(from: names, maxMinutes: limit, excluding: recipes.map(\.title))
                 .filter { Self.isUsable($0, pantry: names, maxMinutes: limit) && !shown.contains($0.title) }
+            await RecipeArt.prefetchPhotos(fresh.map(\.title))  // so the cards arrive with their photos
             guard run == thisRun else { return }  // a newer search replaced this one
             recipes = fresh + recipes
             if recipes.isEmpty { errorMessage = "Couldn't find recipes that fit. Try again or allow more time." }
@@ -103,7 +106,7 @@ final class SuggestViewModel {
         return [("You have everything", ready), ("Ready in 15 min", quick)].filter { $0.recipes.count >= 2 }
     }
 
-    /// Adds more recipes below the current ones: newly written ones, else the next recipe-book matches.
+    /// Adds more recipes below the current ones when asked: newly written ones, else the next recipe-book matches.
     func loadMore() async {
         let names = ((try? context.fetch(FetchDescriptor<PantryItem>())) ?? []).map(\.name)
         let shown = Set(recipes.map(\.title))
@@ -123,6 +126,7 @@ final class SuggestViewModel {
                 .filter { !shown.contains($0.title) }
                 .prefix(6))
         }
+        await RecipeArt.prefetchPhotos(fresh.map(\.title))
         recipes += fresh
         // The models can always write more, so only the recipe book ever runs out.
         hasMore = !fresh.isEmpty
