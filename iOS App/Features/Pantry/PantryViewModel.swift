@@ -71,6 +71,8 @@ final class PantryViewModel {
     var detected: [Detection] = []
     private(set) var isDetecting = false
     private(set) var detectionError: String?
+    /// Things the scan found that are already in the pantry, so an empty result can say so.
+    private(set) var alreadyInPantry: [String] = []
     private var detector: IngredientDetector?
 
     var selectedDetectedCount: Int { detected.filter(\.isSelected).count }
@@ -85,6 +87,7 @@ final class PantryViewModel {
     /// Reads ingredients and counts out of a photo (JPEG/HEIC data); everything starts ticked for review.
     func detect(photo data: Data) async {
         detected = []
+        alreadyInPantry = []
         detectionError = nil
         isDetecting = true
         defer { isDetecting = false }
@@ -102,7 +105,10 @@ final class PantryViewModel {
         self.detector = nil
         do {
             let found = try await detector.ingredients(in: image)
-            detected = IngredientDetector.clean(found, excluding: items.map(\.name), corrections: corrections)
+            let pantry = items.map(\.name)
+            detected = IngredientDetector.clean(found, excluding: pantry, corrections: corrections)
+            alreadyInPantry = IngredientDetector.clean(found, excluding: [], corrections: corrections)
+                .map(\.name).filter(pantry.contains)
         } catch {
             detectionError = "Try a closer, brighter shot, or type the ingredients in instead."
         }
