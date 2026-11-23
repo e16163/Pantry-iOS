@@ -17,14 +17,30 @@ enum RecipeArt {
         server.appending(path: "photo").appending(queryItems: [URLQueryItem(name: "title", value: title)])
     }
 
-    /// Downloads these dishes' photos into the shared cache, so their cards show them right away.
-    static func prefetchPhotos(_ titles: [String]) async {
-        let urls = titles.map(photoURL)
-        await withTaskGroup(of: Void.self) { group in
-            for url in urls {
-                group.addTask { _ = try? await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 4)) }
+    /// Photos already downloaded, by title, so a card draws its photo in the same frame as its text.
+    @MainActor static var photos: [String: Image] = [:]
+
+    /// Downloads these dishes' photos into memory; recipes are shown only after this returns, all at once.
+    /// A dish seen for the first time can take the server ~20 s to find and check a photo.
+    @MainActor static func prefetchPhotos(_ titles: [String]) async {
+        let missing = titles.filter { photos[$0] == nil }
+        await withTaskGroup(of: (String, Image?).self) { group in
+            for title in missing {
+                group.addTask {
+                    let data = try? await URLSession.shared.data(for: URLRequest(url: photoURL(title: title), timeoutInterval: 30)).0
+                    return (title, data.flatMap(image))
+                }
             }
+            for await (title, image) in group { photos[title] = image }
         }
+    }
+
+    private static func image(_ data: Data) -> Image? {
+        #if canImport(UIKit)
+        UIImage(data: data).map(Image.init(uiImage:))
+        #else
+        NSImage(data: data).map(Image.init(nsImage:))
+        #endif
     }
 
     struct Dish: Decodable {
@@ -136,18 +152,19 @@ struct PhotoLibrary {
         """))
 }
 
-/// The dish's own photo through the Worker. Until it arrives (or offline) the ingredient drawings show, never the
-/// closest bundled photo, which can be a different dish.
+/// The dish's own photo through the Worker, from memory when it was prefetched. A photo not yet downloaded
+/// (Saved, or offline) loads over a plain dark tile, never a stand-in picture.
 struct RecipePicture: View {
     let title: String
-    let ingredients: [String]
 
     var body: some View {
-        AsyncImage(url: RecipeArt.photoURL(title: title)) { phase in
-            if let image = phase.image {
-                Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
+        Group {
+            if let image = RecipeArt.photos[title] {
+                fill(image)
             } else {
-                IngredientMosaic(ingredients: ingredients)
+                AsyncImage(url: RecipeArt.photoURL(title: title)) { phase in
+                    if let image = phase.image { fill(image) } else { Color(red: 0.09, green: 0.15, blue: 0.14) }
+                }
             }
         }
         // Menu-photo grade: the bright gray studio backgrounds glare on the dark app, so pull them down a
@@ -161,6 +178,10 @@ struct RecipePicture: View {
             }
         }
         .accessibilityHidden(true)
+    }
+
+    private func fill(_ image: Image) -> some View {
+        Color.clear.overlay { image.resizable().scaledToFill() }.clipped()
     }
 }
 
