@@ -11,6 +11,7 @@ struct PantryView: View {
     @State private var isTakingPhoto = false
     @State private var isReviewing = false
     @State private var editingItem: PantryItem?
+    @State private var isConfirmingClear = false
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverOn
 
@@ -64,6 +65,21 @@ struct PantryView: View {
                         .padding(.top, 4)
                         .accessibilityAddTraits(.isHeader)
                     }
+                }
+                if !viewModel.items.isEmpty {
+                    Button("Clear pantry", systemImage: "trash", role: .destructive) { isConfirmingClear = true }
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(Color.red.opacity(0.12), in: .rect(cornerRadius: 8))
+                        .buttonStyle(.plain)
+                        .plainRow(top: 24, bottom: 24)
+                        .confirmationDialog("Remove all \(viewModel.items.count) ingredients?", isPresented: $isConfirmingClear,
+                                            titleVisibility: .visible) {
+                            Button("Clear pantry", role: .destructive, action: viewModel.deleteAll)
+                        } message: {
+                            Text("This can't be undone.")
+                        }
                 }
             }
             .listStyle(.plain)
@@ -210,7 +226,7 @@ extension PantryView {
             Button("Remove", systemImage: "trash", role: .destructive) { viewModel.delete(item) }
                 .tint(.red)
             Button("Edit", systemImage: "pencil") { editingItem = item }
-                .tint(.gray)
+                .tint(Color.brand)
         }
         .contextMenu {
             Button("Edit", systemImage: "pencil") { editingItem = item }
