@@ -28,6 +28,7 @@ export default {
       if (request.method === "GET" && url.pathname === "/photo") return await photo(url, env);
       if (request.method === "POST" && url.pathname === "/scan") return await scan(request, env);
       if (request.method === "POST" && url.pathname === "/recipes") return await recipes(request, env);
+      if (request.method === "POST" && url.pathname === "/photo-eval") return await photoEval(request, env);
     } catch (error) {
       return Response.json({ error: String(error) }, { status: 502 });
     }
@@ -48,24 +49,45 @@ async function dishPhoto(env, rawTitle, query) {
   const title = rawTitle.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
   const known = await env.PHOTOS.get(`dish:${title}`, "arrayBuffer");
   if (known) return known;
-  const stock = env.PIXABAY_KEY && await stockPhoto(env, title, query).catch(() => null);
-  if (stock) return stock;
+  const choice = env.PIXABAY_KEY && await choosePhoto(env, title, query, taking).catch(() => null);
+  if (choice?.id) {
+    // Every sure match is shared, so the next "spinach omelette" anyone gets needs no looking.
+    if (choice.verified.length) {
+      await env.PHOTOS.put(`verified:${choice.dishName}`,
+        JSON.stringify([...choice.library, ...choice.verified.map((id) => ({ id }))]));
+    }
+    const bytes = await keep(env, title, choice);
+    if (bytes) return bytes;
+  }
   const saved = await env.PHOTOS.get(`made:${title}`, "arrayBuffer");
   if (saved) return saved;
   try {
     return await Promise.race([madePhoto(env, title),
       new Promise((_, reject) => setTimeout(reject, 3_000, new Error("picture took over 3 s")))]);
   } catch (error) {
-    // Free pictures used up for the day: the closest stock photo beats a blank card.
-    const close = env.PIXABAY_KEY && await stockPhoto(env, title, query, true).catch(() => null);
-    if (!close) throw error;
-    return close;
+    // Free pictures used up for the day: the closest stock photo beats a blank card, kept 6 hours so the dish
+    // gets an exact photo later.
+    const standIn = env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { standIn: true }).catch(() => null);
+    const bytes = standIn?.id && await keep(env, title, standIn, 6 * 3600);
+    if (!bytes) throw error;
+    return bytes;
   }
 }
 
-// A Pixabay photo showing exactly this dish that no other dish has: from the shared list of checked photos, else
-// searched ("garlic butter steak", then "butter steak", then "steak") and looked at. Pixabay asks that photos be
-// copied to our own server, so they're kept in KV.
+// Runs the photo picker on a list of dishes without saving anything, skipping the shared library and past claims,
+// so the search and check can be measured and rerun: POST {dishes: [{title, query}], taken: [ids]}.
+async function photoEval(request, env) {
+  const { dishes, taken = [] } = await request.json();
+  const batch = new Set(taken);
+  const results = await Promise.all(dishes.map(async ({ title, query }) => {
+    const started = Date.now();
+    const choice = await choosePhoto(env, title.toLowerCase(), query, batch, { library: false, claims: false })
+      .catch((error) => ({ miss: String(error) }));
+    return { title, query, ...choice, ms: Date.now() - started };
+  }));
+  return Response.json({ results, taken: [...batch] });
+}
+
 const PROTEINS = ["shrimp", "prawn", "chicken", "beef", "pork", "bacon", "ham", "sausage", "salmon", "tuna", "fish",
   "meat", "lamb", "turkey", "crab", "lobster", "steak", "mussels", "squid"];
 const RAW = ["raw", "plant", "garden", "growing", "grow", "harvest", "field", "seedling", "agriculture", "market",
@@ -74,11 +96,15 @@ const DISHES = ["soup", "stew", "chili", "salad", "taco", "burrito", "bowl", "pa
   "sandwich", "toast", "pizza", "burger", "smoothie", "pancake", "waffle", "omelette", "omelet", "rice", "cake", "pie",
   "wrap", "quesadilla", "fry", "hash", "skewer", "kebab", "dumpling", "roll", "risotto", "casserole", "frittata",
   "scramble", "bake", "gratin", "lasagna", "salmon", "steak", "bruschetta", "muffin", "porridge", "oatmeal"];
-// Photos being saved by this server right now, so two dishes at once don't both take the same one.
+// Photos picked by this server, so two dishes picked at once don't both take the same one.
 const taking = new Set();
 const SERVED = ["dish", "plate", "meal", "dinner", "lunch", "breakfast", "served", "cuisine", "delicious", "tasty"];
 
-async function stockPhoto(env, title, query, anyDish = false) {
+// Picks this dish's photo: a Pixabay photo showing exactly this dish that no other dish has, from the shared
+// library of checked photos, else searched ("garlic butter steak", then "butter steak", then "steak") and looked at.
+// Only reads; dishPhoto saves. Returns a Choice {id, url, image, source, dishName, library, verified} or {miss}.
+// The chosen id is added to `taken` with no wait in between, so dishes picked at the same moment can't share one.
+async function choosePhoto(env, title, query, taken, { library: useLibrary = true, claims = true, standIn = false } = {}) {
   // Words that describe the cooking, not the dish, only confuse a photo search.
   const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
   const words = String(query || title).toLowerCase().split(/[^a-z]+/).filter((word) => word && !filler.test(word));
@@ -86,13 +112,14 @@ async function stockPhoto(env, title, query, anyDish = false) {
   const dish = words.findLast((word) => DISHES.includes(word.replace(/e?s$/, "")));
   if (dish) words.push(...words.splice(words.indexOf(dish), 1));
   const dishName = words.join(" ");
+  const claimed = (ids) => (claims ? Promise.all(ids.map((id) => env.PHOTOS.get(`claimed:${id}`))) : ids.map(() => null));
   // Photos already checked to show exactly this dish, for anyone: the first one no dish has taken is used at once.
-  const library = JSON.parse(await env.PHOTOS.get(`verified:${dishName}`) ?? "[]");
-  const libraryUsed = await Promise.all(library.map((photo) => env.PHOTOS.get(`claimed:${photo.id}`)));
-  const ready = library.find((photo, j) => !libraryUsed[j] && !taking.has(photo.id));
-  if (ready && !anyDish) {
-    const bytes = await keep(env, title, ready.id);
-    if (bytes) return bytes;
+  const library = useLibrary ? JSON.parse(await env.PHOTOS.get(`verified:${dishName}`) ?? "[]") : [];
+  const libraryUsed = await claimed(library.map((photo) => photo.id));
+  const ready = standIn ? null : library.find((photo, j) => !libraryUsed[j] && !taken.has(photo.id));
+  if (ready) {
+    taken.add(ready.id);
+    return { id: ready.id, source: "library", dishName, library, verified: [] };
   }
   const searches = await Promise.all(words.slice(0, 3).map((_, i) =>
     fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
@@ -105,36 +132,36 @@ async function stockPhoto(env, title, query, anyDish = false) {
   // More of the search words, then tags that say it's a served meal.
   const score = (hit) => words.filter((word) => tagged(hit, word)).length + (SERVED.some((word) => tagged(hit, word)) ? 0.5 : 0);
   const hits = [...new Map(searches.flat().map((hit) => [hit.id, hit])).values()]
-    .filter((hit) => anyDish || tagged(hit, words.at(-1)))
+    .filter((hit) => standIn || tagged(hit, words.at(-1)))
     // A photo with meat or seafood the dish doesn't have is a different dish: shrimp pasta isn't spinach pasta.
     .filter((hit) => !PROTEINS.some((meat) => tagged(hit, meat) && !title.includes(meat.replace(/e?s$/, ""))))
     // Growing plants and raw ingredients aren't a cooked dish.
     .filter((hit) => !RAW.some((word) => tagged(hit, word)))
     .sort((a, b) => score(b) - score(a));
   // Each photo goes to one dish only, so similar titles don't share a picture.
-  const used = await Promise.all(hits.map((hit) => env.PHOTOS.get(`claimed:${hit.id}`)));
-  const free = hits.filter((hit, j) => !used[j] && !taking.has(hit.id) && !library.some((p) => p.id === hit.id));
-  // A stand-in when nothing exact can be had today; kept 6 hours, so the dish gets an exact photo later.
-  if (anyDish) return free[0] ? await keep(env, title, free[0].id, free[0].largeImageURL, 6 * 3600) : null;
-  // Looked at, not guessed from tags: only photos that really show this dish count.
-  const exact = await exactPhotos(env, dishName, title, free.slice(0, 6));
-  if (!exact?.length) return null;
-  // Every sure match is shared, so the next "spinach omelette" anyone gets needs no looking.
-  await env.PHOTOS.put(`verified:${dishName}`, JSON.stringify([...library, ...exact.map((hit) => ({ id: hit.id }))]));
-  for (const hit of exact) {
-    const bytes = await keep(env, title, hit.id, hit.largeImageURL);
-    if (bytes) return bytes;
+  const used = await claimed(hits.map((hit) => hit.id));
+  const free = hits.filter((hit, j) => !used[j] && !library.some((photo) => photo.id === hit.id));
+  const found = (hit, source, verified) => {
+    taken.add(hit.id);
+    return { id: hit.id, url: hit.largeImageURL, image: hit.webformatURL, source, dishName, library, verified };
+  };
+  if (standIn) {
+    const first = free.find((hit) => !taken.has(hit.id));
+    return first ? found(first, "standin", []) : { miss: "no-candidates" };
   }
-  return null;
+  const candidates = free.filter((hit) => !taken.has(hit.id)).slice(0, 6);
+  if (candidates.length === 0) return { miss: "no-candidates" };
+  // Looked at, not guessed from tags: only photos that really show this dish count.
+  const exact = await exactPhotos(env, dishName, title, candidates);
+  if (exact === null) return { miss: "checker-busy" };
+  const pick = exact.find((hit) => !taken.has(hit.id));
+  return pick ? found(pick, "search", exact.map((hit) => hit.id)) : { miss: "none-exact" };
 }
 
-// Saves Pixabay photo `id` as this dish's photo and marks it taken, or null if it can't be had. `url` is a link from
-// a search just made; photos from the shared list have none, since links expire, so Pixabay is asked for one.
-async function keep(env, title, id, url, ttl) {
-  // Taken here at once, with no wait in between, so dishes looked up at the same moment can't pick the same one.
-  if (taking.has(id)) return null;
-  taking.add(id);
-  url ??= await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&id=${id}`,
+// Saves a Choice as this dish's photo and marks it claimed, or null if it can't be had. Library photos carry no
+// link, since links expire, so Pixabay is asked for a fresh one.
+async function keep(env, title, choice, ttl) {
+  const url = choice.url ?? await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&id=${choice.id}`,
     { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
     .then((r) => (r.ok ? r.json() : {}), () => ({})).then((found) => found.hits?.[0]?.largeImageURL);
   if (!url) return null;
@@ -143,12 +170,12 @@ async function keep(env, title, id, url, ttl) {
   if (!image.ok || !image.headers.get("content-type")?.startsWith("image/")) return null;
   const bytes = await image.arrayBuffer();
   const options = ttl ? { expirationTtl: ttl } : {};
-  await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes, options), env.PHOTOS.put(`claimed:${id}`, title, options)]);
+  await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes, options), env.PHOTOS.put(`claimed:${choice.id}`, title, options)]);
   return bytes;
 }
 
 // Gemini looks at the photos and says which show exactly this dish: the photos that do, [] for none, or null when
-// it's busy. Two Flash-Lite versions are asked at once (each has its own capacity) and the first answer wins.
+// it's busy. The newer Flash-Lite is asked first; the other, which has its own quota, only if that one fails.
 async function exactPhotos(env, dishName, title, hits) {
   if (hits.length === 0) return [];
   if (!env.GEMINI_KEY) return null;
@@ -173,7 +200,8 @@ async function exactPhotos(env, dishName, title, hits) {
     return JSON.parse((await response.json()).candidates[0].content.parts[0].text).exact;
   };
   try {
-    const exact = await Promise.any(["gemini-3.5-flash-lite", "gemini-flash-lite-latest"].map(ask));
+    // One model at a time: asking both at once used two of the free daily requests scans also need.
+    const exact = await ask("gemini-3.5-flash-lite").catch(() => ask("gemini-flash-lite-latest"));
     return [...new Set(exact)].filter((i) => hits[i]).map((i) => hits[i]);
   } catch {
     return null;
