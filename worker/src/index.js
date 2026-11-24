@@ -193,16 +193,22 @@ async function exactPhotos(env, dishName, title, hits) {
     generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT",
       properties: { exact: { type: "ARRAY", items: { type: "INTEGER" } } }, required: ["exact"] } },
   });
-  const ask = async (model) => {
+  const ask = async (model, key) => {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       { method: "POST", body, signal: AbortSignal.timeout(6_000),
-        headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_KEY } });
+        headers: { "content-type": "application/json", "x-goog-api-key": key } });
     if (!response.ok) throw new Error(`${model} ${response.status}`);
     return JSON.parse((await response.json()).candidates[0].content.parts[0].text).exact;
   };
   try {
     // One model at a time: asking both at once used two of the free daily requests scans also need.
-    const exact = await ask("gemini-3.5-flash-lite").catch(() => ask("gemini-flash-lite-latest"));
+    // GEMINI_KEY_2 (optional) is only asked once both models are out on the first key.
+    let exact;
+    for (const key of [env.GEMINI_KEY, env.GEMINI_KEY_2].filter(Boolean)) {
+      exact = await ask("gemini-3.5-flash-lite", key).catch(() => ask("gemini-flash-lite-latest", key)).catch(() => null);
+      if (exact) break;
+    }
+    if (!exact) throw new Error("gemini busy");
     return [...new Set(exact)].filter((i) => hits[i]).map((i) => hits[i]);
   } catch {
     return groqExactPhotos(env, dishName, title, hits).catch(() => null);
