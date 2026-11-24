@@ -317,14 +317,14 @@ async function scan(request, env) {
   const photo = new Uint8Array(await request.arrayBuffer());
   if (photo.length === 0 || photo.length > 15_000_000) return new Response("Bad photo", { status: 400 });
   const hints = new URL(request.url).searchParams.get("hints")?.slice(0, 1000);
-  let base64 = "";
-  for (let i = 0; i < photo.length; i += 0x8000) base64 += String.fromCharCode(...photo.subarray(i, i + 0x8000));
 
   const prompt = hints ? `${SCAN_PROMPT} This user has corrected past scans: ${hints}.` : SCAN_PROMPT;
-  const image = btoa(base64);
-  let text;
-  try {
-    text = await readTwice(env, {
+  const image = photo.toBase64();
+  let text, failure;
+  // The second key's own quota is used once the first key's is gone, before the weaker Groq backup.
+  for (const key of [env.GEMINI_KEY, env.GEMINI_KEY_2].filter(Boolean)) {
+    if (text) break;
+    text = await readTwice(env, key, {
         contents: [{ parts: [
           { text: prompt },
           { inline_data: { mime_type: "image/jpeg", data: image } },
@@ -342,9 +342,10 @@ async function scan(request, env) {
             required: ["items"],
           },
         },
-      });
-  } catch (error) {
-    if (!env.GROQ_KEY || new URL(request.url).searchParams.has("gemini")) throw error;
+      }).catch((error) => { failure = error; });
+  }
+  if (!text) {
+    if (!env.GROQ_KEY || new URL(request.url).searchParams.has("gemini")) throw failure;
     text = await groqScan(env, prompt, image);  // Gemini's free quota ran out or Google is down
   }
   return new Response(text, { headers: { "content-type": "application/json" } });
@@ -353,9 +354,9 @@ async function scan(request, env) {
 // Flash-Lite sometimes stops after the first few things it sees, so two reads run at once and their lists are
 // merged. They use two Flash-Lite versions, each with its own free quota and capacity, so one being busy
 // doesn't sink the scan. The second gets 1.5 s more than the first, so a slow one doesn't hold up the scan.
-async function readTwice(env, request) {
+async function readTwice(env, key, request) {
   const reads = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
-    .map((model) => gemini(env, request, 2_500, 5_000, model).then((text) => JSON.parse(text).items));
+    .map((model) => gemini(env, request, 2_500, 5_000, model, key).then((text) => JSON.parse(text).items));
   const first = await Promise.any(reads).catch((error) => { throw new Error(error.errors.map(String).join(" | ")); });
   const both = await Promise.race([Promise.allSettled(reads), new Promise((resolve) => setTimeout(resolve, 1_500))]);
   const lists = both ? both.filter((r) => r.status === "fulfilled").map((r) => r.value) : [first];
@@ -496,13 +497,13 @@ async function geminiRecipe(env, prompt) {
 
 // Flash-Lite answers fast. When Google is overloaded it can hang, so if it hasn't answered in `hedge` ms
 // (or has failed) Flash is asked too, and whichever answers first wins. Each call gives up after `timeout` ms.
-async function gemini(env, request, hedge, timeout, model = "gemini-flash-lite-latest") {
+async function gemini(env, request, hedge, timeout, model = "gemini-flash-lite-latest", key = env.GEMINI_KEY) {
   const body = JSON.stringify(request);
   const ask = async (model) => {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       { method: "POST", body, signal: AbortSignal.timeout(timeout),
-        headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_KEY } });
+        headers: { "content-type": "application/json", "x-goog-api-key": key } });
     if (!response.ok) throw new Error(`${model} ${response.status}: ${(await response.text()).slice(0, 300)}`);
     return (await response.json()).candidates[0].content.parts[0].text;
   };
@@ -515,6 +516,8 @@ async function gemini(env, request, hedge, timeout, model = "gemini-flash-lite-l
   try {
     return await Promise.any([lite, backup]);
   } catch (error) {
+    // Out of quota (429) stays out until the daily reset, so waiting and retrying only adds time.
+    if (error.errors.every((e) => String(e).includes(" 429"))) throw error;
     // Google's "high demand" 503s come and go, so one more try goes to a newer Flash-Lite with its own capacity.
     await new Promise((resolve) => setTimeout(resolve, 1_000));
     try {
