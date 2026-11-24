@@ -1,6 +1,6 @@
 # Pantry Privacy Policy
 
-_Last updated: November 22, 2026_
+_Last updated: November 24, 2026_
 
 Pantry helps you cook with what you already have. It keeps your information on your iPhone, except for the things listed under "What goes online".
 
@@ -17,9 +17,10 @@ Deleting the app deletes all of this.
 
 ## What goes online
 
-- **Photos you scan** are sent to Google's Gemini AI through our server on Cloudflare to find the ingredients in them. We don't store them. Google may keep and review them to improve its services, under [Google's terms](https://ai.google.dev/gemini-api/terms). Without a connection, the photo is read on your iPhone instead.
+- **Photos you scan** are sent through our server on Cloudflare to Google's Gemini AI, or to Groq when Gemini is busy, to find the ingredients in them. Pantry asks before your first scan. We don't store your photos. Google may keep and review them to improve its services, under [Google's terms](https://ai.google.dev/gemini-api/terms); Groq handles them under [Groq's privacy policy](https://groq.com/privacy-policy). Without a connection, the photo is read on your iPhone instead.
 - **Your ingredient list** is sent to Groq or Google's Gemini AI through our server on Cloudflare when you ask for recipes, so they can write them. Without a connection, Apple Intelligence writes them on your iPhone instead.
-- **Recipe names** are sent to our server on Cloudflare, which looks up a matching photo on Pixabay or makes a picture of the dish. Pictures are stored and shared with everyone who sees the same recipe. Nothing about you is sent with them.
+- **Recipe names** are sent to our server on Cloudflare, which finds a matching stock photo on Pixabay and checks it with Google's Gemini AI or Groq. Photos are stored and shared with everyone who sees the same recipe. Nothing about you is sent with them.
+- **Your IP address** is seen by our server, like any website, to stop one device from sending too many requests. We don't store it or link it to you.
 
 ## Camera and photos
 

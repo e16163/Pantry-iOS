@@ -12,6 +12,9 @@ struct PantryView: View {
     @State private var isReviewing = false
     @State private var editingItem: PantryItem?
     @State private var isConfirmingClear = false
+    /// Scans send the photo to an AI service, so the first one asks first (App Review guideline 5.1.2).
+    @AppStorage("allowsAIScan") private var allowsAIScan = false
+    @State private var askingToScan: ScanSource?
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverOn
 
@@ -80,6 +83,11 @@ struct PantryView: View {
                             Text("This can't be undone.")
                         }
                 }
+                Link("Privacy policy", destination: Self.privacyPolicy)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .plainRow(top: 8, bottom: 24)
             }
             .listStyle(.plain)
             .sensoryFeedback(.impact(weight: .light), trigger: viewModel.items.count)
@@ -122,6 +130,17 @@ struct PantryView: View {
                 CameraPicker(onCapture: review).ignoresSafeArea()
             }
             #endif
+            .alert("Scan with AI?", isPresented: Binding(get: { askingToScan != nil }, set: { if !$0 { askingToScan = nil } }),
+                   presenting: askingToScan) { source in
+                Button("Allow") {
+                    allowsAIScan = true
+                    startScan(source)
+                }
+                Link("Privacy policy", destination: PantryView.privacyPolicy)
+                Button("Not now", role: .cancel) {}
+            } message: { _ in
+                Text("To find the ingredients, your photo is sent through Pantry's server to an AI service, Google Gemini or Groq. Pantry doesn't keep it, but Google may use it to improve its services.")
+            }
             .sheet(isPresented: $isReviewing) {
                 DetectionReviewSheet(viewModel: viewModel)
             }
@@ -182,16 +201,23 @@ extension PantryView {
         Menu("Scan a photo", systemImage: "camera") {
             #if os(iOS)
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                Button("Take photo", systemImage: "camera") {
-                    viewModel.prepareScan()
-                    isTakingPhoto = true
-                }
+                Button("Take photo", systemImage: "camera") { startScan(.camera) }
             }
             #endif
-            Button("Choose photo", systemImage: "photo.on.rectangle") {
-                viewModel.prepareScan()
-                isPickingPhoto = true
-            }
+            Button("Choose photo", systemImage: "photo.on.rectangle") { startScan(.library) }
+        }
+    }
+
+    enum ScanSource { case camera, library }
+
+    static let privacyPolicy = URL(string: "https://github.com/e16163/Pantry-iOS/blob/main/PRIVACY.md")!
+
+    private func startScan(_ source: ScanSource) {
+        guard allowsAIScan else { askingToScan = source; return }
+        viewModel.prepareScan()
+        switch source {
+        case .camera: isTakingPhoto = true
+        case .library: isPickingPhoto = true
         }
     }
 
