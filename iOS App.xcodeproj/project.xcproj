@@ -44,7 +44,7 @@
         "GENERATE_INFOPLIST_FILE": "YES",
         "INFOPLIST_KEY_CFBundleDisplayName": "Pantry",
         "INFOPLIST_KEY_UIUserInterfaceStyle": "Dark",
-        "INFOPLIST_KEY_NSCameraUsageDescription": "Take a photo of your fridge or pantry and Pantry will list the ingredients it sees, so you don't have to type them. The photo is sent to an AI service (Google Gemini or Groq) to read it, and Pantry doesn't keep it.",
+        "INFOPLIST_KEY_NSCameraUsageDescription": "Take a photo of your fridge or pantry and Pantry lists the ingredients it sees, so you don't have to type them. Pantry sends the photo to Google Gemini or Groq to read it and doesn't keep it.",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]": "YES",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]": "YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]": "YES",

@@ -37,7 +37,7 @@ struct WhatCanICookIntent: AppIntent {
         }
         let titles = FallbackRecipes.best(for: pantry, maxMinutes: nil, limit: 3).map(\.title)
         guard !titles.isEmpty else {
-            return .result(dialog: "Nothing in the recipe book fits your pantry yet. Open Pantry to get ideas from Apple Intelligence.")
+            return .result(dialog: "Nothing in the recipe book fits your pantry yet. Open Pantry to get new recipes written for your pantry.")
         }
         return .result(dialog: "You could make \(titles.formatted(.list(type: .or))).")
     }
