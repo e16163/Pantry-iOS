@@ -10,7 +10,7 @@ Everything to paste into App Store Connect for Pantry 1.0. Character limits are 
 | Subtitle (30) | Scan your fridge, cook dinner |
 | Primary category | Food & Drink |
 | Secondary category | Lifestyle |
-| Bundle ID | com.pantry.app |
+| Bundle ID | com.bendoan.iOSApp |
 | SKU | pantry-ios-1 |
 | Content rights | Yes, it contains third-party content, and you have the rights to use it. Recipe photos come from Pixabay, whose license allows use in apps without attribution. |
 
