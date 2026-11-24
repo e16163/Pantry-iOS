@@ -22,12 +22,12 @@ const SCAN_PROMPT = "List the food ingredients someone could cook with that you 
   "estimate what's left from how full it looks; amount is 0 when you can't tell.";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     try {
       if (request.method === "GET" && url.pathname === "/photo") return await photo(url, env);
       if (request.method === "POST" && url.pathname === "/scan") return await scan(request, env);
-      if (request.method === "POST" && url.pathname === "/recipes") return await recipes(request, env);
+      if (request.method === "POST" && url.pathname === "/recipes") return await recipes(request, env, ctx);
       if (request.method === "POST" && url.pathname === "/photo-eval") return await photoEval(request, env);
     } catch (error) {
       return Response.json({ error: String(error) }, { status: 502 });
@@ -45,11 +45,32 @@ async function photo(url, env) {
 
 // A real stock photo of exactly this dish, found with the photo search the recipe AI wrote ("spinach omelette"),
 // else with the title. When no photo shows it, a picture is made from the title (capped at 3 s).
-async function dishPhoto(env, rawTitle, query) {
-  const title = rawTitle.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
+// Recipes wait at most 1.5 s for their photo. A check still running then keeps going in the background, and the
+// best-ranked photo (downloaded while the check runs) stands in for 6 h; an exact match found afterwards replaces
+// it for everyone from then on.
+async function quickPhoto(env, ctx, rawTitle, query) {
+  let closest;
+  const full = dishPhoto(env, rawTitle, query, (hit) => {
+    closest = { hit, bytes: fetch(hit.largeImageURL).then((r) =>
+      (r.ok && r.headers.get("content-type")?.startsWith("image/") ? r.arrayBuffer() : null), () => null) };
+  }).catch(() => {});
+  const finished = await Promise.race([full.then(() => true), new Promise((done) => setTimeout(done, 1_500, false))]);
+  if (finished) return;
+  ctx.waitUntil(full);
+  const bytes = await closest?.bytes;
+  if (!bytes) return full;
+  const title = dishTitle(rawTitle), options = { expirationTtl: 6 * 3600 };
+  await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes, options),
+    env.PHOTOS.put(`claimed:${closest.hit.id}`, title, options)]);
+}
+
+const dishTitle = (raw) => raw.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
+
+async function dishPhoto(env, rawTitle, query, onRanked) {
+  const title = dishTitle(rawTitle);
   const known = await env.PHOTOS.get(`dish:${title}`, "arrayBuffer");
   if (known) return known;
-  const choice = env.PIXABAY_KEY && await choosePhoto(env, title, query, taking).catch(() => null);
+  const choice = env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { onRanked }).catch(() => null);
   if (choice?.id) {
     // Every sure match is shared, so the next "spinach omelette" anyone gets needs no looking.
     if (choice.verified.length) {
@@ -111,7 +132,7 @@ const SERVED = ["dish", "plate", "meal", "dinner", "lunch", "breakfast", "served
 // library of checked photos, else searched ("garlic butter steak", then "butter steak", then "steak") and looked at.
 // Only reads; dishPhoto saves. Returns a Choice {id, url, image, source, dishName, library, verified} or {miss}.
 // The chosen id is added to `taken` with no wait in between, so dishes picked at the same moment can't share one.
-async function choosePhoto(env, title, query, taken, { library: useLibrary = true, claims = true, standIn = false } = {}) {
+async function choosePhoto(env, title, query, taken, { library: useLibrary = true, claims = true, standIn = false, onRanked } = {}) {
   // Words that describe the cooking, not the dish, only confuse a photo search.
   const filler = /^(quick|easy|simple|homemade|classic|best|cheesy|creamy|spicy|crispy|savory|fresh|hearty|light|healthy|veggie|loaded|one|pan|skillet|style|with|and|&|on|the|a|of|in)$/;
   const words = String(query || title).toLowerCase().split(/[^a-z]+/).filter((word) => word && !filler.test(word));
@@ -128,11 +149,7 @@ async function choosePhoto(env, title, query, taken, { library: useLibrary = tru
     taken.add(ready.id);
     return { id: ready.id, source: "library", dishName, library, verified: [] };
   }
-  const searches = await Promise.all(words.slice(0, 3).map((_, i) =>
-    fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
-      `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(words.slice(i).join(" "))}`,
-      { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
-      .then((response) => (response.ok ? response.json() : {})).then((json) => json.hits ?? [], () => [])));
+  const searches = await Promise.all(words.slice(0, 3).map((_, i) => searchPixabay(env, words.slice(i).join(" "))));
   // Only photos tagged with the dish itself (the last word: "quesadilla", not "beef" or "cheese"), most specific
   // search first, each once; among those, more matching words go first (a stable sort keeps search order).
   const tagged = (hit, word) => hit.tags.toLowerCase().includes(word.replace(/e?s$/, ""));
@@ -156,25 +173,51 @@ async function choosePhoto(env, title, query, taken, { library: useLibrary = tru
     const first = free.find((hit) => !taken.has(hit.id));
     return first ? found(first, "standin", []) : { miss: "no-candidates" };
   }
-  const candidates = free.filter((hit) => !taken.has(hit.id)).slice(0, 6);
-  if (candidates.length === 0) return { miss: "no-candidates" };
+  const open = free.filter((hit) => !taken.has(hit.id));
+  if (open.length === 0) return { miss: "no-candidates" };
+  onRanked?.(open[0]);
+  // The best-ranked photo comes back on a miss, so a stand-in needs no second search.
+  const closest = () => (taken.has(open[0].id) ? null : found(open[0], "standin", []));
+  // Photos already looked at for this dish and turned down are never sent to the checker again.
+  const rejected = useLibrary ? JSON.parse(await env.PHOTOS.get(`rejected:${dishName}`) ?? "[]") : [];
+  const candidates = open.filter((hit) => !rejected.includes(hit.id)).slice(0, 6);
+  if (candidates.length === 0) return { miss: "none-exact", closest };
   // Looked at, not guessed from tags: only photos that really show this dish count.
   const exact = await exactPhotos(env, dishName, title, candidates);
-  // The best-ranked photo comes back on a miss, so a stand-in needs no second search.
-  const closest = () => (taken.has(candidates[0].id) ? null : found(candidates[0], "standin", []));
   if (exact === null) return { miss: "checker-busy", closest };
+  const turnedDown = candidates.filter((hit) => !exact.includes(hit)).map((hit) => hit.id);
+  if (useLibrary && turnedDown.length) {
+    await env.PHOTOS.put(`rejected:${dishName}`, JSON.stringify([...new Set([...rejected, ...turnedDown])]));
+  }
   const pick = exact.find((hit) => !taken.has(hit.id));
   return pick ? found(pick, "search", exact.map((hit) => hit.id)) : { miss: "none-exact", closest };
 }
 
 // Saves a Choice as this dish's photo and marks it claimed, or null if it can't be had. Library photos carry no
 // link, since links expire, so Pixabay is asked for a fresh one.
+// Pixabay asks for searches to be cached 24 h; the same dish searched again then costs no request.
+async function searchPixabay(env, q) {
+  const saved = await env.PHOTOS.get(`search:${q}`, "json");
+  if (saved) return saved;
+  const hits = await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
+    `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(q)}`,
+    { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
+    .then((response) => (response.ok ? response.json() : {})).then((json) => json.hits, () => undefined);
+  if (!hits) return [];
+  const kept = hits.map(({ id, tags, previewURL, webformatURL, largeImageURL }) =>
+    ({ id, tags, previewURL, webformatURL, largeImageURL }));
+  await env.PHOTOS.put(`search:${q}`, JSON.stringify(kept), { expirationTtl: 24 * 3600 });
+  return kept;
+}
+
 async function keep(env, title, choice, ttl) {
-  const url = choice.url ?? await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&id=${choice.id}`,
+  const fresh = () => fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&id=${choice.id}`,
     { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
     .then((r) => (r.ok ? r.json() : {}), () => ({})).then((found) => found.hits?.[0]?.largeImageURL);
-  if (!url) return null;
-  const image = await fetch(url);
+  const get = async (url) => (url ? fetch(url) : { ok: false, headers: new Headers() });
+  let image = await get(choice.url ?? await fresh());
+  // A link from a cached search can have expired; a fresh one comes from looking the photo up by id.
+  if (!image.ok && choice.url) image = await get(await fresh());
   // Pixabay answers "Rate limit exceeded" as text when busy; that must never be saved as the dish's photo.
   if (!image.ok || !image.headers.get("content-type")?.startsWith("image/")) return null;
   const bytes = await image.arrayBuffer();
@@ -362,7 +405,7 @@ const RECIPE_RULES = "You are a home cook writing recipes for a cookbook. Pick t
   "\"spinach omelette\", \"beef tacos\", \"egg fried rice\", \"chicken stir fry\", \"cheese quesadilla\" or " +
   "\"grilled cheese sandwich\". No cooking words like easy, quick or homemade.";
 
-async function recipes(request, env) {
+async function recipes(request, env, ctx) {
   const { ingredients, maxMinutes, excluding } = await request.json();
   if (!Array.isArray(ingredients) || ingredients.length === 0) return new Response("Missing ingredients", { status: 400 });
   const list = (items, n) => items.slice(0, n).map((item) => String(item).slice(0, 60)).join(", ");
@@ -376,7 +419,7 @@ async function recipes(request, env) {
   // Each recipe's photo is made as soon as that recipe is written, so the app's photo requests find it saved.
   const results = await Promise.allSettled(kinds.map((kind) => oneRecipe(env,
     `Write 1 recipe for ${kind}. Choose from these ingredients: ${list(ingredients, 80)}.${rules}`)
-    .then(async (recipe) => { await dishPhoto(env, recipe.title, recipe.photo).catch(() => {}); return recipe; })));
+    .then(async (recipe) => { await quickPhoto(env, ctx, recipe.title, recipe.photo); return recipe; })));
   // The same title twice is one dish shown twice, with one photo.
   const found = [...new Map(results.filter((r) => r.status === "fulfilled")
     .map((r) => [r.value.title.toLowerCase(), r.value])).values()];
