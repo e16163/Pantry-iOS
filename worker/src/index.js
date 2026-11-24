@@ -62,12 +62,15 @@ async function dishPhoto(env, rawTitle, query) {
   const saved = await env.PHOTOS.get(`made:${title}`, "arrayBuffer");
   if (saved) return saved;
   try {
+    if (Date.now() < picturesOutUntil) throw new Error("free pictures used up today");
     return await Promise.race([madePhoto(env, title),
       new Promise((_, reject) => setTimeout(reject, 3_000, new Error("picture took over 3 s")))]);
   } catch (error) {
+    if (String(error).includes("4006")) picturesOutUntil = new Date().setUTCHours(24, 0, 0, 0);
     // Free pictures used up for the day: the closest stock photo beats a blank card, kept 6 hours so the dish
     // gets an exact photo later.
-    const standIn = env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { standIn: true }).catch(() => null);
+    const standIn = choice?.closest?.() ??
+      (env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { standIn: true }).catch(() => null));
     const bytes = standIn?.id && await keep(env, title, standIn, 6 * 3600);
     if (!bytes) throw error;
     return bytes;
@@ -99,6 +102,8 @@ const DISHES = ["soup", "stew", "chili", "salad", "taco", "burrito", "bowl", "pa
   "scramble", "bake", "gratin", "lasagna", "salmon", "steak", "bruschetta", "muffin", "porridge", "oatmeal"];
 // Photos picked by this server, so two dishes picked at once don't both take the same one.
 const taking = new Set();
+// Workers AI answers 4006 once the day's free neurons are gone; asking again until midnight UTC only adds wait.
+let picturesOutUntil = 0;
 const SERVED = ["dish", "plate", "meal", "dinner", "lunch", "breakfast", "served", "cuisine", "delicious", "tasty"];
 
 // Picks this dish's photo: a Pixabay photo showing exactly this dish that no other dish has, from the shared
@@ -154,9 +159,11 @@ async function choosePhoto(env, title, query, taken, { library: useLibrary = tru
   if (candidates.length === 0) return { miss: "no-candidates" };
   // Looked at, not guessed from tags: only photos that really show this dish count.
   const exact = await exactPhotos(env, dishName, title, candidates);
-  if (exact === null) return { miss: "checker-busy" };
+  // The best-ranked photo comes back on a miss, so a stand-in needs no second search.
+  const closest = () => (taken.has(candidates[0].id) ? null : found(candidates[0], "standin", []));
+  if (exact === null) return { miss: "checker-busy", closest };
   const pick = exact.find((hit) => !taken.has(hit.id));
-  return pick ? found(pick, "search", exact.map((hit) => hit.id)) : { miss: "none-exact" };
+  return pick ? found(pick, "search", exact.map((hit) => hit.id)) : { miss: "none-exact", closest };
 }
 
 // Saves a Choice as this dish's photo and marks it claimed, or null if it can't be had. Library photos carry no
@@ -193,9 +200,11 @@ async function exactPhotos(env, dishName, title, hits) {
     generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT",
       properties: { exact: { type: "ARRAY", items: { type: "INTEGER" } } }, required: ["exact"] } },
   });
+  // One budget for every try: a model that hangs (seen at 6 s) must not push the photo past the 3-5 s goal.
+  const deadline = Date.now() + 3_500;
   const ask = async (model, key) => {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      { method: "POST", body, signal: AbortSignal.timeout(6_000),
+      { method: "POST", body, signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
         headers: { "content-type": "application/json", "x-goog-api-key": key } });
     if (!response.ok) throw new Error(`${model} ${response.status}`);
     return JSON.parse((await response.json()).candidates[0].content.parts[0].text).exact;
