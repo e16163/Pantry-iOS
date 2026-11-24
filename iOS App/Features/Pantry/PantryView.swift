@@ -210,7 +210,7 @@ extension PantryView {
 
     enum ScanSource { case camera, library }
 
-    static let privacyPolicy = URL(string: "https://github.com/e16163/Pantry-iOS/blob/main/PRIVACY.md")!
+    static let privacyPolicy = RecipeArt.server.appending(path: "privacy")
 
     private func startScan(_ source: ScanSource) {
         guard allowsAIScan else { askingToScan = source; return }

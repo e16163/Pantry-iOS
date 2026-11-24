@@ -2,6 +2,12 @@ name = "pantry"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
+# PRIVACY.md is imported as text and served at /privacy.
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
 # Every dish picture is made once and kept here for all users.
 [[kv_namespaces]]
 binding = "PHOTOS"

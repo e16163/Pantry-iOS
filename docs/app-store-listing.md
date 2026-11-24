@@ -27,7 +27,7 @@ Answer "None" or "No" to every question. Pantry has no violence, mature themes, 
 
 ## App Privacy
 
-Privacy policy URL: https://github.com/e16163/Pantry-iOS/blob/main/PRIVACY.md
+Privacy policy URL: https://pantry.supersaladstinger.workers.dev/privacy
 
 Data collection: "Yes, we collect data from this app." Then pick these two types, with the same answers for each:
 
