@@ -2,9 +2,6 @@ name = "pantry"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
-[ai]
-binding = "AI"
-
 # Every dish picture is made once and kept here for all users.
 [[kv_namespaces]]
 binding = "PHOTOS"
