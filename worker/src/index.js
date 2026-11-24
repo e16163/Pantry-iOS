@@ -77,7 +77,8 @@ async function dishPhoto(env, rawTitle, query) {
 // Runs the photo picker on a list of dishes without saving anything, skipping the shared library and past claims,
 // so the search and check can be measured and rerun: POST {dishes: [{title, query}], taken: [ids]}.
 async function photoEval(request, env) {
-  const { dishes, taken = [] } = await request.json();
+  const { dishes, taken = [], groq } = await request.json();
+  if (groq) env = { ...env, GEMINI_KEY: undefined };  // measures the backup checker
   const batch = new Set(taken);
   const results = await Promise.all(dishes.map(async ({ title, query }) => {
     const started = Date.now();
@@ -178,7 +179,7 @@ async function keep(env, title, choice, ttl) {
 // it's busy. The newer Flash-Lite is asked first; the other, which has its own quota, only if that one fails.
 async function exactPhotos(env, dishName, title, hits) {
   if (hits.length === 0) return [];
-  if (!env.GEMINI_KEY) return null;
+  if (!env.GEMINI_KEY) return groqExactPhotos(env, dishName, title, hits).catch(() => null);
   const images = await Promise.all(hits.map(async (hit) => {
     const bytes = new Uint8Array(await (await fetch(hit.webformatURL.replace("_640", "_340"))).arrayBuffer());
     return { inline_data: { mime_type: "image/jpeg", data: bytes.toBase64() } };
@@ -204,9 +205,38 @@ async function exactPhotos(env, dishName, title, hits) {
     const exact = await ask("gemini-3.5-flash-lite").catch(() => ask("gemini-flash-lite-latest"));
     return [...new Set(exact)].filter((i) => hits[i]).map((i) => hits[i]);
   } catch {
-    return null;
+    return groqExactPhotos(env, dishName, title, hits).catch(() => null);
   }
 }
+
+// Gemini's free quota is out: Groq's vision model looks instead. Its free tier allows one
+// minute's worth of 7,000 input tokens, and each photo costs about 1,800, so each dish of a 3-recipe batch
+// sends only its best-ranked photo.
+async function groqExactPhotos(env, dishName, title, hits) {
+  if (!env.GROQ_KEY) return null;
+  hits = hits.slice(0, GROQ_PHOTOS);
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    signal: AbortSignal.timeout(5_000),
+    headers: { "content-type": "application/json", authorization: `Bearer ${env.GROQ_KEY}` },
+    body: JSON.stringify({
+      model: "qwen/qwen3.8-27b",
+      messages: [{ role: "user", content: [
+        { type: "text", text: `These are photos 0 to ${hits.length - 1}. Which show exactly "${dishName}" (from a ` +
+          `recipe called "${title}"), cooked and served? It must be the same kind of dish with its main named ` +
+          "ingredient visible, one dish not a table of foods, and no meat or seafood the dish doesn't have. Raw " +
+          'ingredients, text, or any doubt mean no. Answer only with JSON like {"exact":[0]}.' },
+        ...hits.map((hit) => ({ type: "image_url", image_url: { url: hit.previewURL } })),
+      ] }],
+      response_format: { type: "json_object" },
+      max_tokens: 30,
+    }),
+  });
+  if (!response.ok) throw new Error(`groq ${response.status}`);
+  const exact = JSON.parse((await response.json()).choices[0].message.content).exact ?? [];
+  return [...new Set(exact)].filter((i) => hits[i]).map((i) => hits[i]);
+}
+const GROQ_PHOTOS = 1;
 
 // FLUX.1 schnell: about 1.5 s a picture, where FLUX.2 klein looked a little more real but took 5 s or more.
 async function madePhoto(env, title) {
