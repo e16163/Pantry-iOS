@@ -20,6 +20,7 @@ Apple searches the name most, so it carries the main search terms: AI, recipe, p
 
 - Price: Free.
 - Availability: all countries, unless Google's free Gemini terms rule out the EU, UK and Switzerland. Check that before you pick countries.
+- Remove China mainland. China requires AI apps to use a model registered with its Cyberspace Administration (CAC) and to enter its filing number. Gemini and Groq aren't registered there, and Gemini isn't offered in China. With China mainland removed, answer "No" to "Does your app offer AIGC services in China mainland?"
 
 ## Age rating
 
