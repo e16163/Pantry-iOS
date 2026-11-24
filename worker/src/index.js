@@ -21,6 +21,19 @@ const SCAN_PROMPT = "List the food ingredients someone could cook with that you 
   "there is: read the size on the label (a gallon of milk is 3.8 L, a 16 oz block of cheese is 16 oz), or " +
   "estimate what's left from how full it looks; amount is 0 when you can't tell.";
 
+import { DurableObject } from "cloudflare:workers";
+
+// One owner per photo, decided in one place, so two dishes picked at the same moment on different servers can't
+// both get it. A stand-in's claim lapses with the stand-in.
+export class Claims extends DurableObject {
+  async claim(id, title, ttl) {
+    const owner = await this.ctx.storage.get(String(id));
+    if (owner && owner.title !== title && owner.until > Date.now()) return false;
+    await this.ctx.storage.put(String(id), { title, until: ttl ? Date.now() + ttl * 1000 : Number.MAX_SAFE_INTEGER });
+    return true;
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -144,11 +157,19 @@ async function choosePhoto(env, title, query, taken, { library: useLibrary = tru
   // Photos already checked to show exactly this dish, for anyone: the first one no dish has taken is used at once.
   const library = useLibrary ? JSON.parse(await env.PHOTOS.get(`verified:${dishName}`) ?? "[]") : [];
   const libraryUsed = await claimed(library.map((photo) => photo.id));
-  const ready = standIn ? null : library.find((photo, j) => !libraryUsed[j] && !taken.has(photo.id));
-  if (ready) {
-    taken.add(ready.id);
-    return { id: ready.id, source: "library", dishName, library, verified: [] };
-  }
+  // Takes a photo for this dish if no other dish has it: in this batch (taken) and, for real picks, everywhere.
+  const owns = async (id, ttl) => {
+    if (taken.has(id)) return false;
+    if (claims && !await env.CLAIMS.get(env.CLAIMS.idFromName("photos")).claim(id, title, ttl)) return false;
+    taken.add(id);
+    return true;
+  };
+  const firstOwned = async (list, ttl) => {
+    for (const item of list) if (await owns(item.id, ttl)) return item;
+    return null;
+  };
+  const ready = standIn ? null : await firstOwned(library.filter((photo, j) => !libraryUsed[j]));
+  if (ready) return { id: ready.id, source: "library", dishName, library, verified: [] };
   const searches = await Promise.all(words.slice(0, 3).map((_, i) => searchPixabay(env, words.slice(i).join(" "))));
   // Only photos tagged with the dish itself (the last word: "quesadilla", not "beef" or "cheese"), most specific
   // search first, each once; among those, more matching words go first (a stable sort keeps search order).
@@ -166,18 +187,19 @@ async function choosePhoto(env, title, query, taken, { library: useLibrary = tru
   const used = await claimed(hits.map((hit) => hit.id));
   const free = hits.filter((hit, j) => !used[j] && !library.some((photo) => photo.id === hit.id));
   const found = (hit, source, verified) => {
-    taken.add(hit.id);
     return { id: hit.id, url: hit.largeImageURL, image: hit.webformatURL, source, dishName, library, verified };
   };
   if (standIn) {
-    const first = free.find((hit) => !taken.has(hit.id));
+    const first = await firstOwned(free, 6 * 3600);
     return first ? found(first, "standin", []) : { miss: "no-candidates" };
   }
   const open = free.filter((hit) => !taken.has(hit.id));
-  if (open.length === 0) return { miss: "no-candidates" };
-  onRanked?.(open[0]);
-  // The best-ranked photo comes back on a miss, so a stand-in needs no second search.
-  const closest = () => (taken.has(open[0].id) ? null : found(open[0], "standin", []));
+  // The best-ranked free photo is held for this dish at once: it may stand in before the check ends, and a dish
+  // picked in the same moment must not stand in with the same photo.
+  const held = await firstOwned(open, 6 * 3600);
+  if (!held) return { miss: "no-candidates" };
+  onRanked?.(held);
+  const closest = () => found(held, "standin", []);
   // Photos already looked at for this dish and turned down are never sent to the checker again.
   const rejected = useLibrary ? JSON.parse(await env.PHOTOS.get(`rejected:${dishName}`) ?? "[]") : [];
   const candidates = open.filter((hit) => !rejected.includes(hit.id)).slice(0, 6);
@@ -189,7 +211,14 @@ async function choosePhoto(env, title, query, taken, { library: useLibrary = tru
   if (useLibrary && turnedDown.length) {
     await env.PHOTOS.put(`rejected:${dishName}`, JSON.stringify([...new Set([...rejected, ...turnedDown])]));
   }
-  const pick = exact.find((hit) => !taken.has(hit.id));
+  let pick = null;
+  for (const hit of exact) {
+    // The held photo is already this dish's; its claim just stops lapsing.
+    const ours = hit.id === held.id
+      ? !claims || await env.CLAIMS.get(env.CLAIMS.idFromName("photos")).claim(hit.id, title)
+      : await owns(hit.id);
+    if (ours) { pick = hit; break; }
+  }
   return pick ? found(pick, "search", exact.map((hit) => hit.id)) : { miss: "none-exact", closest };
 }
 

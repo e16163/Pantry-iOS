@@ -11,3 +11,12 @@ binding = "PHOTOS"
 id = "3c7a90fa08594d978d294f1047a2c805"
 
 # GEMINI_KEY, GROQ_KEY and PIXABAY_KEY are secrets: npx wrangler secret put <NAME>
+
+# Hands each Pixabay photo to one dish only; KV can't, since a claim reaches other servers late.
+[[durable_objects.bindings]]
+name = "CLAIMS"
+class_name = "Claims"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Claims"]
