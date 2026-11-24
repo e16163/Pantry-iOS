@@ -2,6 +2,7 @@
 //   GET  /photo?title=Garlic%20Butter%20Steak  -> that dish's Pixabay photo, kept in KV
 //   POST /scan?hints=... (JPEG body; hints are the user's past fixes) -> {"items":[{"name":"egg","count":6}]}
 //   POST /recipes {"ingredients":["egg"],"maxMinutes":30,"excluding":["Omelette"]} -> {"recipes":[...3 recipes]}
+//   GET  /privacy -> the privacy policy (../PRIVACY.md) as a web page; the app and App Store link here
 // Deploy: npx wrangler deploy (from this folder)
 
 const SCAN_PROMPT = "List the food ingredients someone could cook with that you can see in this photo of a fridge, " +
@@ -17,6 +18,7 @@ const SCAN_PROMPT = "List the food ingredients someone could cook with that you 
   "estimate what's left from how full it looks; amount is 0 when you can't tell.";
 
 import { DurableObject } from "cloudflare:workers";
+import PRIVACY from "../../PRIVACY.md";
 
 // One owner per photo, decided in one place, so two dishes picked at the same moment on different servers can't
 // both get it. A stand-in's claim lapses with the stand-in.
@@ -32,6 +34,7 @@ export class Claims extends DurableObject {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/privacy") return privacyPage();
     // Per phone, so one person (or a script) can't use up the free AI and Pixabay quotas everyone shares.
     const route = `${request.method} ${url.pathname}`;
     const limiter = route === "GET /photo" ? env.PHOTO_LIMIT : env.AI_LIMIT;
@@ -52,6 +55,27 @@ export default {
     return new Response("Not found", { status: 404 });
   },
 };
+
+// A plain page that loads anywhere, unlike GitHub's file view, which showed blank in the app's browser.
+// Handles only what PRIVACY.md uses: headings, one italic line, bullet lists, bold, links and paragraphs.
+function privacyPage() {
+  const inline = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\[(.+?)\]\((https:[^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/(^|\s)(https:\/\/\S+?)(\.?)$/g, '$1<a href="$2">$2</a>$3').replace(/^_(.+)_$/, "<i>$1</i>");
+  const body = PRIVACY.trim().split(/\n\s*\n/).map((block) => {
+    if (block.startsWith("## ")) return `<h2>${inline(block.slice(3))}</h2>`;
+    if (block.startsWith("# ")) return `<h1>${inline(block.slice(2))}</h1>`;
+    if (block.startsWith("- ")) return `<ul>${block.split("\n").map((line) => `<li>${inline(line.slice(2))}</li>`).join("")}</ul>`;
+    return `<p>${inline(block)}</p>`;
+  }).join("\n");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Pantry privacy policy</title>
+<style>body{font:17px/1.55 -apple-system,system-ui,sans-serif;max-width:680px;margin:0 auto;padding:24px 20px 48px;
+color:#111;background:#fff}h1{font-size:28px;line-height:1.2}h2{font-size:20px;margin-top:32px}a{color:#0a6b35}
+li{margin:8px 0}@media(prefers-color-scheme:dark){body{color:#eee;background:#000}a{color:#4cc27f}}</style>
+</head><body>${body}</body></html>`;
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=3600" } });
+}
 
 async function photo(url, env) {
   const title = url.searchParams.get("title") ?? "";
