@@ -40,9 +40,9 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 
 ## Version 1.0
 
-**Promotional text (170).** You can change this any time without a new build.
+**Promotional text (170).** Apple doesn't use this for search, so it carries no keywords. It's the first text under the screenshots and you can change it any time without a new build, so it's written to get the download.
 
-> Point your camera at your fridge. AI finds the ingredients and writes recipes you can cook tonight, each with a photo of the dish and step-by-step instructions.
+> Snap your fridge and AI writes 3 recipes from what you already have, each with a real photo and a step-by-step cooking mode. Free, with no account and no ads.
 
 **Description (4000)**
 
@@ -75,9 +75,9 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 >
 > Your pantry and favorites stay on your iPhone. No accounts, no ads, no tracking. Pantry asks before your first scan, then sends each photo to an AI service to read it and doesn't keep it. Without a connection, Pantry uses Apple Intelligence on iPhones that support it, plus a built-in recipe book.
 
-**Keywords (100).** Commas, no spaces, singular words. Apple combines these with the name and subtitle, so "generator" here plus "AI recipe" in the name matches a search for "ai recipe generator". Words already in the name or subtitle aren't repeated.
+**Keywords (100).** Commas, no spaces, singular words. Apple combines these with the name and subtitle, so "generator" here plus "AI recipe" in the name matches a search for "ai recipe generator". Words already in the name, subtitle or category (Food & Drink) aren't repeated, because Apple indexes those already.
 
-> generator,ingredient,food,cook,dinner,leftover,picture,camera,snap,chef,kitchen,dish,healthy,quick
+> generator,ingredient,cook,dinner,leftover,picture,camera,snap,scan,chef,kitchen,easy,quick,planner
 
 **Support URL:** https://github.com/e16163/Pantry-iOS/issues
 
@@ -110,8 +110,10 @@ Pantry uses only standard HTTPS, so it qualifies for the exemption. The project 
 
 The iPhone 6.9" set is required: 1320 x 2868 pixels, 3 to 10 screenshots. iPad screenshots are needed only if the app stays on iPad. A storyboard to approve:
 
-1. "Scan your fridge." The scan result list.
-2. "Get dinner from what you have." Three recipe cards with photos.
-3. "Every step, start to finish." A recipe's ingredients and steps.
-4. "Cook one step at a time." Cooking mode.
-5. "Save your favorites." The Favorites tab.
+Captions use the words people search for. Some ASO tools report that Apple reads screenshot text for search since June 2025. Apple hasn't confirmed it, but clear captions help downloads either way.
+
+1. "AI fridge scanner. Snap a photo, get your ingredients." The scan result list.
+2. "Photo to recipe in seconds." Three recipe cards with photos.
+3. "Recipes from what you already have." A recipe's ingredients and steps.
+4. "Step-by-step cooking mode." Cooking mode.
+5. "Save your favorite recipes." The Favorites tab.
