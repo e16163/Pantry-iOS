@@ -14,7 +14,8 @@ struct SuggestView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     PageTitle(title: "What's cooking?",
-                              subtitle: "Cooking with ^[\(viewModel.pantryCount) ingredient](inflect: true) from your pantry")
+                              subtitle: viewModel.pantryCount == 0 ? nil
+                                  : "Cooking with ^[\(viewModel.pantryCount) ingredient](inflect: true) from your pantry")
                         .padding(.horizontal, Spacing.page)
                         .padding(.top, 8)
                     hero
