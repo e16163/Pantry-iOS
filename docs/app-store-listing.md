@@ -75,9 +75,9 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 >
 > Your pantry and favorites stay on your iPhone. No accounts, no ads, no tracking. Pantry asks before your first scan, then sends each photo to an AI service to read it and doesn't keep it. Without a connection, Pantry uses Apple Intelligence on iPhones that support it, plus a built-in recipe book.
 
-**Keywords (100).** Commas, no spaces, singular words. Apple combines these with the name and subtitle, so "generator" here plus "AI recipe" in the name matches a search for "ai recipe generator". Words already in the name, subtitle or category (Food & Drink) aren't repeated, because Apple indexes those already.
+**Keywords (100).** Commas, no spaces, singular words. Apple combines these with the name and subtitle, so "generator" here plus "AI recipe" in the name matches a search for "ai recipe generator". Words already in the name, subtitle or category (Food & Drink) aren't repeated, because Apple indexes those already. "AI" sits in the name, so the keywords add the words people pair with it: smart, assistant, generator, scan.
 
-> generator,ingredient,cook,dinner,leftover,picture,camera,snap,scan,chef,kitchen,easy,quick,planner
+> generator,ingredient,cook,dinner,leftover,picture,camera,snap,scan,smart,assistant,chef,easy,planner
 
 **Support URL:** https://github.com/e16163/Pantry-iOS/issues
 
