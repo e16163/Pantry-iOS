@@ -6,13 +6,14 @@ These prompts are for ChatGPT (or any image model that takes text prompts). They
 
 1. Open a new ChatGPT chat.
 2. Paste the **Style rules** section as your first message, and send it.
-3. Paste one image prompt at a time, in order. Wait for each image before sending the next one.
-4. If an image drifts from the others, reply: "Same style as image 1. Fix: <what's wrong>."
-5. Open each finished image in Canva or Figma. Place the matching real screenshot from `docs/screenshots/` over the magenta phone screen, filling it edge to edge.
-6. Check every headline for spelling. If one is wrong, cover it with a green box and type it yourself in Plus Jakarta Sans ExtraBold.
-7. Export each screenshot at exactly 1320 x 2868 PNG, and the header at 3840 x 2160.
+3. For each image, **attach its screenshot from `docs/screenshots/`** (the heading says which one), paste the prompt, and send. Image 2 and the header have no screenshot.
+4. Check the phone screen against your real screenshot. ChatGPT sometimes changes words or photos in it. If it did, reply: "Put my screenshot back on the phone exactly as I attached it. Don't change anything in it."
+5. If ChatGPT keeps changing the screenshot, send the prompt without attaching it. You'll get a magenta screen, and you place the real screenshot over it in Canva or Figma.
+6. If an image drifts from the others, reply: "Same style as image 1. Fix: <what's wrong>."
+7. Check every headline for spelling.
+8. Export each screenshot at exactly 1320 x 2868 PNG, and the header at 3840 x 2160.
 
-The phone screens are magenta on purpose. Apple rejects screenshots that show app screens the app doesn't have, so every screen must be a real screenshot of Pantry, not one the AI draws.
+Apple rejects screenshots that show app screens the app doesn't have, so the phone must show your real screen, not one the AI drew.
 
 ---
 
@@ -33,7 +34,7 @@ HEADLINE TYPE: very bold geometric sans-serif, like Plus Jakarta Sans ExtraBold 
 
 DIVIDER: on images that have one, a thin solid black horizontal line, about 0.4% of the image height thick, running the full width of the image from the left edge to the right edge, with a solid white circle (no outline, no shadow) centered on the line. Inside the circle is one small flat-color icon, simple and friendly, in black, deep green #006E32 and one accent color.
 
-PHONE: a modern iPhone with thin, even black bezels and a Dynamic Island, shown straight-on and perfectly flat unless I say it's tilted. Its screen is filled with solid flat magenta #FF00FF and nothing else: no app interface, no icons, no reflections, no text. The magenta must reach every corner of the screen. I'll put my real app screenshot there.
+PHONE: a modern iPhone with thin, even black bezels and a Dynamic Island, shown straight-on and perfectly flat unless I say it's tilted. When I attach a screenshot, put that exact screenshot on the phone screen, filling it edge to edge. Do not redraw, restyle, translate, crop out or change anything in it: every word, photo, icon and color must stay exactly as in my screenshot. It is a real screen from my app. If I don't attach one, fill the screen with solid flat magenta #FF00FF.
 
 FOOD: real, photorealistic food, cut out cleanly like stickers, with no drop shadow and no background around it. Bright natural studio light, rich color, sharp focus, natural imperfections (crumbs, oil sheen, herb flecks), shot like a Canon 5D with a 100mm macro lens. Food items are cropped by the image edges and overlap the phone frame, so they feel like they're bursting into the scene. Use 1 or 2 food items per image unless I say otherwise.
 
@@ -49,7 +50,7 @@ Reply "Ready" and wait for my first prompt.
 ## Image 1. Snap (uses `1-pantry.png`)
 
 ```
-Image 1 of 7. Portrait 1320x2868.
+Image 1 of 7. Portrait 1320x2868. I attached 1-pantry.png: put it on the phone screen exactly as it is.
 
 Top 24%: the headline, left-aligned with a left margin of 6% of the width, in two lines:
 Line 1, very large: "Snap your fridge."
@@ -57,7 +58,7 @@ Line 2, about 40% of line 1's size, same black, bold: "AI fridge scanner"
 
 No divider line or circle on this image.
 
-The phone: large, tilted 12 degrees clockwise, its top-left corner bleeding off the left edge of the image, filling the lower 76% of the height. Magenta screen.
+The phone: large, tilted 12 degrees clockwise, its top-left corner bleeding off the left edge of the image, filling the lower 76% of the height. My attached screenshot on the screen, unchanged.
 
 Food: half an avocado with the pit in, cut face toward the viewer, cropped by the bottom-left corner and overlapping the phone's bottom edge. A brown egg and a lemon floating near the top-right, partly cropped by the right edge.
 ```
@@ -86,14 +87,14 @@ Below the headline, a floating collage of photorealistic cut-out food, each item
 ## Image 3. Recipes (uses `2-recipes.png`)
 
 ```
-Image 3 of 7. Portrait 1320x2868.
+Image 3 of 7. Portrait 1320x2868. I attached 2-recipes.png: put it on the phone screen exactly as it is.
 
 Top 13%: the headline "Recipes", centered, very large.
 Just under it, centered, about 30% of the headline size, bold black: "Photo to recipe in seconds"
 
 At 21% from the top: the divider. The full-width thin black line, with a white circle centered on it. Icon in the circle: a flat camera with a small spark above it.
 
-The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. Magenta screen.
+The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. My attached screenshot on the screen, unchanged.
 
 Food: a slice of lasagna cropped by the right edge at mid-height, overlapping the phone's right side. A bowl of fried rice with egg cropped by the bottom-left corner.
 ```
@@ -101,14 +102,14 @@ Food: a slice of lasagna cropped by the right edge at mid-height, overlapping th
 ## Image 4. Recipe detail (uses `3-recipe.png`)
 
 ```
-Image 4 of 7. Portrait 1320x2868.
+Image 4 of 7. Portrait 1320x2868. I attached 3-recipe.png: put it on the phone screen exactly as it is.
 
 Top 13%: the headline "Cook what you have", centered, very large (shrink it to fit on one line, or two lines if needed).
 Just under it, centered, about 30% of the headline size, bold black: "Recipes from your ingredients"
 
 At 21% from the top: the divider. The full-width thin black line, with a white circle centered on it. Icon in the circle: a flat checklist with green ticks.
 
-The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. Magenta screen.
+The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. My attached screenshot on the screen, unchanged.
 
 Food: three cherry tomatoes on the vine cropped by the left edge near the top of the phone. A sprig of fresh basil and a halved garlic bulb cropped by the bottom-right corner, overlapping the phone.
 ```
@@ -116,14 +117,14 @@ Food: three cherry tomatoes on the vine cropped by the left edge near the top of
 ## Image 5. Cook (uses `4-cooking.png`)
 
 ```
-Image 5 of 7. Portrait 1320x2868.
+Image 5 of 7. Portrait 1320x2868. I attached 4-cooking.png: put it on the phone screen exactly as it is.
 
 Top 13%: the headline "Cook", centered, very large.
 Just under it, centered, about 30% of the headline size, bold black: "Step-by-step cooking mode"
 
 At 21% from the top: the divider. The full-width thin black line, with a white circle centered on it. Icon in the circle: a flat frying pan with a fried egg in it.
 
-The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. Magenta screen.
+The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. My attached screenshot on the screen, unchanged.
 
 Food: a sunny-side-up egg cropped by the left edge near the top of the phone. Below the middle of the phone, large and overlapping its lower half: a twirl of garlic butter pasta on a fork, cropped by the right edge, with a sprig of rosemary.
 ```
@@ -131,14 +132,14 @@ Food: a sunny-side-up egg cropped by the left edge near the top of the phone. Be
 ## Image 6. Save (uses `5-favorites.png`)
 
 ```
-Image 6 of 7. Portrait 1320x2868.
+Image 6 of 7. Portrait 1320x2868. I attached 5-favorites.png: put it on the phone screen exactly as it is.
 
 Top 13%: the headline "Save", centered, very large.
 Just under it, centered, about 30% of the headline size, bold black: "Your favorite recipes"
 
 At 21% from the top: the divider. The full-width thin black line, with a white circle centered on it. Icon in the circle: a flat red heart.
 
-The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. Magenta screen.
+The phone: upright, centered, front view, its top edge at 26% from the top and its bottom cropped by the bottom edge of the image. My attached screenshot on the screen, unchanged.
 
 Food: a slice of strawberry cheesecake cropped by the right edge near the top of the phone. A taco with fresh salsa cropped by the bottom-left corner, overlapping the phone.
 ```
