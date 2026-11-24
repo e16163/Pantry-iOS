@@ -71,7 +71,7 @@ final class RecipeGenerator {
         }
     }
 
-    nonisolated static let safetyMessage = "That pantry tripped a safety filter. Try removing an ingredient."
+    nonisolated static let safetyMessage = "The AI's safety filter blocked these ingredients. Try removing one."
     nonisolated static let busyMessage = "Too many requests. Wait a moment and try again."
     nonisolated static let tooLongMessage = "Too many ingredients at once. Try fewer."
     nonisolated static let genericMessage = "Couldn't come up with recipes right now. Try again."

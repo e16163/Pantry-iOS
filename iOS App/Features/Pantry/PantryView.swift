@@ -139,7 +139,7 @@ struct PantryView: View {
                 Link("Privacy policy", destination: PantryView.privacyPolicy)
                 Button("Not now", role: .cancel) {}
             } message: { _ in
-                Text("To find the ingredients, your photo is sent through Pantry's server to an AI service, Google Gemini or Groq. Pantry doesn't keep it, but Google may use it to improve its services.")
+                Text("Pantry sends your photo through its server to Google Gemini or Groq, an AI service, to find the ingredients. Pantry doesn't keep the photo, but Google may use it to improve its services.")
             }
             .sheet(isPresented: $isReviewing) {
                 DetectionReviewSheet(viewModel: viewModel)

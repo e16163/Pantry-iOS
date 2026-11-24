@@ -120,7 +120,7 @@ struct SuggestView: View {
         } else if viewModel.visibleRecipes.isEmpty {
             ContentUnavailableView {
                 Label {
-                    Text("Ready when you are")
+                    Text("No recipes yet")
                 } icon: {
                     Image(.suggestReady).illustration()
                 }
@@ -154,7 +154,7 @@ struct SuggestView: View {
                     HStack(spacing: 8) {
                         if viewModel.isLoadingMore {
                             ProgressView()
-                            Text("Cooking up more…")
+                            Text("Finding more recipes…")
                         } else {
                             Image(systemName: "sparkles")
                             Text("More recipes")
