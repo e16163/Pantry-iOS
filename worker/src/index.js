@@ -4,11 +4,6 @@
 //   POST /recipes {"ingredients":["egg"],"maxMinutes":30,"excluding":["Omelette"]} -> {"recipes":[...3 recipes]}
 // Deploy: npx wrangler deploy (from this folder)
 
-// Plain, real-photo wording: words like "moody" or "saturated" make it look AI-made.
-const STYLE = "real photo taken with a DSLR for a food delivery app menu, as actually served at a good " +
-  "restaurant, 45 degree angle, natural daylight, true-to-life colors, real textures, crumbs and " +
-  "imperfections, simple plate on a wooden table, no text, no hands";
-
 const SCAN_PROMPT = "List the food ingredients someone could cook with that you can see in this photo of a fridge, " +
   "freezer, pantry, kitchen counter or groceries. Check every shelf, drawer, door bin and bag. Read the labels on " +
   "bottles, jars, cartons, cans and packets, and name what's inside as specifically as a shopping list would: " +
@@ -93,22 +88,12 @@ async function dishPhoto(env, rawTitle, query, onRanked) {
     const bytes = await keep(env, title, choice);
     if (bytes) return bytes;
   }
-  const saved = await env.PHOTOS.get(`made:${title}`, "arrayBuffer");
-  if (saved) return saved;
-  try {
-    if (Date.now() < picturesOutUntil) throw new Error("free pictures used up today");
-    return await Promise.race([madePhoto(env, title),
-      new Promise((_, reject) => setTimeout(reject, 3_000, new Error("picture took over 3 s")))]);
-  } catch (error) {
-    if (String(error).includes("4006")) picturesOutUntil = new Date().setUTCHours(24, 0, 0, 0);
-    // Free pictures used up for the day: the closest stock photo beats a blank card, kept 6 hours so the dish
-    // gets an exact photo later.
-    const standIn = choice?.closest?.() ??
-      (env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { standIn: true }).catch(() => null));
-    const bytes = standIn?.id && await keep(env, title, standIn, 6 * 3600);
-    if (!bytes) throw error;
-    return bytes;
-  }
+  // No exact Pixabay photo yet: the closest one, kept 6 hours so the dish gets an exact photo later.
+  const standIn = choice?.closest?.() ??
+    (env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { standIn: true }).catch(() => null));
+  const bytes = standIn?.id && await keep(env, title, standIn, 6 * 3600);
+  if (!bytes) throw new Error(`no Pixabay photo for ${title}`);
+  return bytes;
 }
 
 // Runs the photo picker on a list of dishes without saving anything, skipping the shared library and past claims,
@@ -136,8 +121,6 @@ const DISHES = ["soup", "stew", "chili", "salad", "taco", "burrito", "bowl", "pa
   "scramble", "bake", "gratin", "lasagna", "salmon", "steak", "bruschetta", "muffin", "porridge", "oatmeal"];
 // Photos picked by this server, so two dishes picked at once don't both take the same one.
 const taking = new Set();
-// Workers AI answers 4006 once the day's free neurons are gone; asking again until midnight UTC only adds wait.
-let picturesOutUntil = 0;
 const geminiOut = new Map();
 const SERVED = ["dish", "plate", "meal", "dinner", "lunch", "breakfast", "served", "cuisine", "delicious", "tasty"];
 
@@ -330,18 +313,6 @@ async function groqExactPhotos(env, dishName, title, hits) {
 }
 const GROQ_PHOTOS = 1;
 
-// FLUX.1 schnell: about 1.5 s a picture, where FLUX.2 klein looked a little more real but took 5 s or more.
-async function madePhoto(env, title) {
-  const make = () => env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt: `${title}, ${STYLE}`, steps: 4 });
-  // Now and then one waits 10 s in Cloudflare's queue, so a second try starts at 1.5 s and the first one back wins.
-  const first = make();
-  const second = new Promise((resolve) => { setTimeout(resolve, 1_500); first.catch(resolve); }).then(make);
-  const { image } = await Promise.any([first, second]).catch((error) => { throw new Error(error.errors.map(String).join(" | ")); });
-  const bytes = Uint8Array.fromBase64(image);  // native decode; a JS loop ran past the free plan's CPU limit
-  await env.PHOTOS.put(`made:${title}`, bytes);
-  return bytes;
-}
-
 async function scan(request, env) {
   const photo = new Uint8Array(await request.arrayBuffer());
   if (photo.length === 0 || photo.length > 15_000_000) return new Response("Bad photo", { status: 400 });
@@ -382,12 +353,13 @@ async function scan(request, env) {
 
 // Flash-Lite sometimes stops after the first few things it sees, so two reads run at once and their lists are
 // merged. They use two Flash-Lite versions, each with its own free quota and capacity, so one being busy
-// doesn't sink the scan. The second gets 1.5 s more than the first, so a slow one doesn't hold up the scan.
+// doesn't sink the scan. The second gets 0.5 s more than the first: answers land within 0.4 s of each other, and
+// waiting longer only waited on a busy model's retry.
 async function readTwice(env, key, request) {
   const reads = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
     .map((model) => gemini(env, request, 2_500, 5_000, model, key).then((text) => JSON.parse(text).items));
   const first = await Promise.any(reads).catch((error) => { throw new Error(error.errors.map(String).join(" | ")); });
-  const both = await Promise.race([Promise.allSettled(reads), new Promise((resolve) => setTimeout(resolve, 1_500))]);
+  const both = await Promise.race([Promise.allSettled(reads), new Promise((resolve) => setTimeout(resolve, 500))]);
   const lists = both ? both.filter((r) => r.status === "fulfilled").map((r) => r.value) : [first];
   const merged = new Map();
   for (const item of lists.flat()) {
@@ -547,8 +519,7 @@ async function gemini(env, request, hedge, timeout, model = "gemini-flash-lite-l
   } catch (error) {
     // Out of quota (429) stays out until the daily reset, so waiting and retrying only adds time.
     if (error.errors.every((e) => String(e).includes(" 429"))) throw error;
-    // Google's "high demand" 503s come and go, so one more try goes to a newer Flash-Lite with its own capacity.
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    // Google's "high demand" 503s are per model, so one more try goes right away to a newer Flash-Lite with its own capacity.
     try {
       return await ask("gemini-3.5-flash-lite");
     } catch (retry) {
