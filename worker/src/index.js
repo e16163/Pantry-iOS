@@ -104,6 +104,7 @@ const DISHES = ["soup", "stew", "chili", "salad", "taco", "burrito", "bowl", "pa
 const taking = new Set();
 // Workers AI answers 4006 once the day's free neurons are gone; asking again until midnight UTC only adds wait.
 let picturesOutUntil = 0;
+const geminiOut = new Map();
 const SERVED = ["dish", "plate", "meal", "dinner", "lunch", "breakfast", "served", "cuisine", "delicious", "tasty"];
 
 // Picks this dish's photo: a Pixabay photo showing exactly this dish that no other dish has, from the shared
@@ -203,9 +204,12 @@ async function exactPhotos(env, dishName, title, hits) {
   // One budget for every try: a model that hangs (seen at 6 s) must not push the photo past the 3-5 s goal.
   const deadline = Date.now() + 3_500;
   const ask = async (model, key) => {
+    // A model and key out of quota stay out until the daily reset; skipping them saves a round trip each.
+    if (geminiOut.get(model + key) > Date.now()) throw new Error(`${model} out`);
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      { method: "POST", body, signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+      { method: "POST", body, signal: AbortSignal.timeout(Math.max(1, Math.min(2_000, deadline - Date.now()))),
         headers: { "content-type": "application/json", "x-goog-api-key": key } });
+    if (response.status === 429) geminiOut.set(model + key, Date.now() + 15 * 60_000);
     if (!response.ok) throw new Error(`${model} ${response.status}`);
     return JSON.parse((await response.json()).candidates[0].content.parts[0].text).exact;
   };
@@ -214,7 +218,8 @@ async function exactPhotos(env, dishName, title, hits) {
     // GEMINI_KEY_2 (optional) is only asked once both models are out on the first key.
     let exact;
     for (const key of [env.GEMINI_KEY, env.GEMINI_KEY_2].filter(Boolean)) {
-      exact = await ask("gemini-3.5-flash-lite", key).catch(() => ask("gemini-flash-lite-latest", key)).catch(() => null);
+      // Latest first: it answered in about 1 s while 3.5 took 1.5-2 s or hung (measured 2026-11-23).
+      exact = await ask("gemini-flash-lite-latest", key).catch(() => ask("gemini-3.5-flash-lite", key)).catch(() => null);
       if (exact) break;
     }
     if (!exact) throw new Error("gemini busy");
