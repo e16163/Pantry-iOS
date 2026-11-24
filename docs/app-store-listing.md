@@ -6,15 +6,15 @@ Everything to paste into App Store Connect for Pantry 1.0. Character limits are 
 
 | Field | Value |
 |---|---|
-| Name (30) | Pantry: Fridge to Recipes |
-| Subtitle (30) | Scan your fridge, cook dinner |
+| Name (30) | Pantry: AI Recipes From Photo |
+| Subtitle (30) | Fridge scanner & meal ideas |
 | Primary category | Food & Drink |
 | Secondary category | Lifestyle |
 | Bundle ID | com.bendoan.iOSApp |
 | SKU | pantry-ios-1 |
 | Content rights | Yes, it contains third-party content, and you have the rights to use it. Recipe photos come from Pixabay, whose license allows use in apps without attribution. |
 
-If the name is taken, try "Pantry Chef: Fridge Recipes" or "Fridge to Fork: Pantry Recipes".
+Apple searches the name most, so it carries the main search terms: AI, recipe, photo. The subtitle adds new ones (fridge, scanner, meal, idea) instead of repeating the name. If the name is taken, try "Pantry: AI Fridge Recipes" or "Pantry AI: Photo to Recipe".
 
 ## Pricing and availability
 
@@ -42,25 +42,42 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 
 **Promotional text (170).** You can change this any time without a new build.
 
-> Take a photo of your fridge and Pantry lists what's in it. Then get three recipes that use what you have, with a photo and step-by-step instructions.
+> Point your camera at your fridge. AI finds the ingredients and writes recipes you can cook tonight, each with a photo of the dish and step-by-step instructions.
 
 **Description (4000)**
 
-> Pantry finds recipes you can make with what's already in your kitchen.
+> Take a photo of your fridge and get recipes for what's in it.
 >
-> Take a photo of your fridge, pantry or groceries and Pantry lists the ingredients it sees, with counts like 6 eggs or 1 L of milk. Check the list, fix anything it got wrong, and add it all with one tap. Pantry remembers your fixes for next time. You can also type ingredients in.
+> Pantry uses AI to read your photo and list the ingredients it sees, with counts like 6 eggs or 1 L of milk. Then AI writes three recipes that use only what you have, each with a photo of the dish and steps you can follow. It's for the moment you open the fridge and don't know what to make.
 >
-> Tap Find recipes and Pantry writes three recipes that use only what you have, plus salt, pepper, oil and water. Pick 15 minutes, 30 minutes, an hour or any time. Each recipe has a photo of the dish, the amount of every ingredient for 2 servings, and 5 to 8 steps that tell you the heat, the time and what it looks like when it's done. Tap More recipes for three more.
+> HOW IT WORKS
 >
-> Start cooking opens one step at a time in large text, so you can follow along at the stove. Tap the heart to save a recipe to Favorites.
+> 1. Take a photo of your fridge, pantry, counter or grocery bags.
+> 2. Check the list. Fix anything the AI got wrong and Pantry remembers it for next time.
+> 3. Tap Find recipes. Pick 15 minutes, 30 minutes, an hour or any time.
+> 4. Open a recipe and tap Start cooking.
 >
-> With Siri, say "Add to my pantry in Pantry" or "What can I cook with Pantry".
+> WHAT YOU GET
 >
-> Your pantry and favorites stay on your iPhone. Pantry has no accounts, no ads and no tracking. Photos you scan go to an AI service to read them, and Pantry asks before your first scan. Without a connection, Pantry uses Apple Intelligence on iPhones that support it, plus a built-in recipe book.
+> AI fridge scanner. Snap a photo instead of typing a list. Pantry reads labels on jars, cartons and cans, so it knows skim milk from oat milk.
+>
+> AI recipe generator. Every recipe uses only your ingredients plus salt, pepper, oil and water, so you don't need to shop. Each one has amounts for 2 servings and 5 to 8 steps that say the heat, the time and what it looks like when it's done. Tap More recipes for three new ones.
+>
+> A real photo of every dish. Each recipe shows a stock photo of the finished dish, not an AI drawing.
+>
+> Cooking mode. One step per screen in large text, so you can follow along at the stove.
+>
+> Favorites. Tap the heart to keep a recipe.
+>
+> Siri. Say "Add to my pantry in Pantry" or "What can I cook with Pantry".
+>
+> PRIVACY
+>
+> Your pantry and favorites stay on your iPhone. No accounts, no ads, no tracking. Pantry asks before your first scan, then sends each photo to an AI service to read it and doesn't keep it. Without a connection, Pantry uses Apple Intelligence on iPhones that support it, plus a built-in recipe book.
 
-**Keywords (100).** Commas, no spaces. The name and subtitle words are already searchable, so they aren't repeated.
+**Keywords (100).** Commas, no spaces, singular words. Apple combines these with the name and subtitle, so "generator" here plus "AI recipe" in the name matches a search for "ai recipe generator". Words already in the name or subtitle aren't repeated.
 
-> ingredient,meal,leftover,food,grocery,kitchen,idea,cooking,healthy,quick,easy,supper,lunch,breakfast
+> generator,ingredient,food,cook,dinner,leftover,picture,camera,snap,chef,kitchen,dish,healthy,quick
 
 **Support URL:** https://github.com/e16163/Pantry-iOS/issues
 
