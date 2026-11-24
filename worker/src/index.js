@@ -1,5 +1,5 @@
 // Pantry's free backend on Cloudflare Workers.
-//   GET  /photo?title=Garlic%20Butter%20Steak  -> an AI-made JPEG of that dish (or its saved Pixabay photo), kept in KV
+//   GET  /photo?title=Garlic%20Butter%20Steak  -> that dish's Pixabay photo, kept in KV
 //   POST /scan?hints=... (JPEG body; hints are the user's past fixes) -> {"items":[{"name":"egg","count":6}]}
 //   POST /recipes {"ingredients":["egg"],"maxMinutes":30,"excluding":["Omelette"]} -> {"recipes":[...3 recipes]}
 // Deploy: npx wrangler deploy (from this folder)
@@ -32,13 +32,22 @@ export class Claims extends DurableObject {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    // Per phone, so one person (or a script) can't use up the free AI and Pixabay quotas everyone shares.
+    const route = `${request.method} ${url.pathname}`;
+    const limiter = route === "GET /photo" ? env.PHOTO_LIMIT : env.AI_LIMIT;
+    // An IPv6 phone (or attacker) gets a whole /64 block of addresses, so the block is the key.
+    const ip = request.headers.get("cf-connecting-ip") ?? "";
+    const { success } = await limiter.limit({ key: ip.includes(":") ? ip.split(":").slice(0, 4).join(":") : ip });
+    if (!success) return new Response("Too many requests", { status: 429 });
     try {
       if (request.method === "GET" && url.pathname === "/photo") return await photo(url, env);
       if (request.method === "POST" && url.pathname === "/scan") return await scan(request, env);
       if (request.method === "POST" && url.pathname === "/recipes") return await recipes(request, env, ctx);
       if (request.method === "POST" && url.pathname === "/photo-eval") return await photoEval(request, env);
     } catch (error) {
-      return Response.json({ error: String(error) }, { status: 502 });
+      // Upstream errors name the Google project and Groq organization, so the details stay in the logs.
+      console.log(route, String(error));
+      return Response.json({ error: "Service busy, try again" }, { status: 502 });
     }
     return new Response("Not found", { status: 404 });
   },
@@ -47,26 +56,28 @@ export default {
 async function photo(url, env) {
   const title = url.searchParams.get("title") ?? "";
   if (!title.trim()) return new Response("Missing title", { status: 400 });
-  const headers = { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" };
+  // 6 h, like a stand-in, so a phone picks up the exact photo that replaces one.
+  const headers = { "content-type": "image/jpeg", "cache-control": "public, max-age=21600" };
   return new Response(await dishPhoto(env, title), { headers });
 }
 
 // A real stock photo of exactly this dish, found with the photo search the recipe AI wrote ("spinach omelette"),
-// else with the title. When no photo shows it, a picture is made from the title (capped at 3 s).
+// else with the title.
 // Recipes wait at most 1.5 s for their photo. A check still running then keeps going in the background, and the
 // best-ranked photo (downloaded while the check runs) stands in for 6 h; an exact match found afterwards replaces
 // it for everyone from then on.
 async function quickPhoto(env, ctx, rawTitle, query) {
-  let closest;
+  let closest, done = false;
   const full = dishPhoto(env, rawTitle, query, (hit) => {
     closest = { hit, bytes: fetch(hit.largeImageURL).then((r) =>
       (r.ok && r.headers.get("content-type")?.startsWith("image/") ? r.arrayBuffer() : null), () => null) };
-  }).catch(() => {});
+  }).catch(() => {}).finally(() => { done = true; });
   const finished = await Promise.race([full.then(() => true), new Promise((done) => setTimeout(done, 1_500, false))]);
   if (finished) return;
   ctx.waitUntil(full);
   const bytes = await closest?.bytes;
   if (!bytes) return full;
+  if (done) return;  // the check finished while the stand-in downloaded; its photo must not be overwritten
   const title = dishTitle(rawTitle), options = { expirationTtl: 6 * 3600 };
   await Promise.all([env.PHOTOS.put(`dish:${title}`, bytes, options),
     env.PHOTOS.put(`claimed:${closest.hit.id}`, title, options)]);
@@ -78,7 +89,10 @@ async function dishPhoto(env, rawTitle, query, onRanked) {
   const title = dishTitle(rawTitle);
   const known = await env.PHOTOS.get(`dish:${title}`, "arrayBuffer");
   if (known) return known;
-  const choice = env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { onRanked }).catch(() => null);
+  // The app asks again by title alone once a stand-in lapses; the recipe AI's short search finds far more.
+  if (query) await env.PHOTOS.put(`query:${title}`, query);
+  else query = await env.PHOTOS.get(`query:${title}`);
+  const choice = env.PIXABAY_KEY && await choosePhoto(env, title, query, new Set(), { onRanked }).catch(() => null);
   if (choice?.id) {
     // Every sure match is shared, so the next "spinach omelette" anyone gets needs no looking.
     if (choice.verified.length) {
@@ -90,7 +104,7 @@ async function dishPhoto(env, rawTitle, query, onRanked) {
   }
   // No exact Pixabay photo yet: the closest one, kept 6 hours so the dish gets an exact photo later.
   const standIn = choice?.closest?.() ??
-    (env.PIXABAY_KEY && await choosePhoto(env, title, query, taking, { standIn: true }).catch(() => null));
+    (env.PIXABAY_KEY && await choosePhoto(env, title, query, new Set(), { standIn: true }).catch(() => null));
   const bytes = standIn?.id && await keep(env, title, standIn, 6 * 3600);
   if (!bytes) throw new Error(`no Pixabay photo for ${title}`);
   return bytes;
@@ -100,6 +114,7 @@ async function dishPhoto(env, rawTitle, query, onRanked) {
 // so the search and check can be measured and rerun: POST {dishes: [{title, query}], taken: [ids]}.
 async function photoEval(request, env) {
   const { dishes, taken = [], groq } = await request.json();
+  if (!Array.isArray(dishes) || dishes.length > 6) return new Response("1 to 6 dishes", { status: 400 });
   if (groq) env = { ...env, GEMINI_KEY: undefined };  // measures the backup checker
   const batch = new Set(taken);
   const results = await Promise.all(dishes.map(async ({ title, query }) => {
@@ -119,8 +134,6 @@ const DISHES = ["soup", "stew", "chili", "salad", "taco", "burrito", "bowl", "pa
   "sandwich", "toast", "pizza", "burger", "smoothie", "pancake", "waffle", "omelette", "omelet", "rice", "cake", "pie",
   "wrap", "quesadilla", "fry", "hash", "skewer", "kebab", "dumpling", "roll", "risotto", "casserole", "frittata",
   "scramble", "bake", "gratin", "lasagna", "salmon", "steak", "bruschetta", "muffin", "porridge", "oatmeal"];
-// Photos picked by this server, so two dishes picked at once don't both take the same one.
-const taking = new Set();
 const geminiOut = new Map();
 const SERVED = ["dish", "plate", "meal", "dinner", "lunch", "breakfast", "served", "cuisine", "delicious", "tasty"];
 
@@ -168,7 +181,8 @@ async function choosePhoto(env, title, query, taken, { library: useLibrary = tru
     .sort((a, b) => score(b) - score(a));
   // Each photo goes to one dish only, so similar titles don't share a picture.
   const used = await claimed(hits.map((hit) => hit.id));
-  const free = hits.filter((hit, j) => !used[j] && !library.some((photo) => photo.id === hit.id));
+  // A dish asked for again may keep a photo it already holds.
+  const free = hits.filter((hit, j) => (!used[j] || used[j] === title) && !library.some((photo) => photo.id === hit.id));
   const found = (hit, source, verified) => {
     return { id: hit.id, url: hit.largeImageURL, image: hit.webformatURL, source, dishName, library, verified };
   };
@@ -212,7 +226,7 @@ async function searchPixabay(env, q) {
   const saved = await env.PHOTOS.get(`search:${q}`, "json");
   if (saved) return saved;
   const hits = await fetch(`https://pixabay.com/api/?key=${env.PIXABAY_KEY}&image_type=photo&category=food` +
-    `&orientation=horizontal&safesearch=true&per_page=20&q=${encodeURIComponent(q)}`,
+    `&orientation=horizontal&safesearch=true&per_page=50&q=${encodeURIComponent(q)}`,
     { headers: { "user-agent": "PantryApp/1.0 (recipe photos)" } })
     .then((response) => (response.ok ? response.json() : {})).then((json) => json.hits, () => undefined);
   if (!hits) return [];
@@ -259,12 +273,15 @@ async function exactPhotos(env, dishName, title, hits) {
   // One budget for every try: a model that hangs (seen at 6 s) must not push the photo past the 3-5 s goal.
   const deadline = Date.now() + 3_500;
   const ask = async (model, key) => {
-    // A model and key out of quota stay out until the daily reset; skipping them saves a round trip each.
+    // A model and key out of quota are skipped for a while; that saves a round trip each.
     if (geminiOut.get(model + key) > Date.now()) throw new Error(`${model} out`);
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       { method: "POST", body, signal: AbortSignal.timeout(Math.max(1, Math.min(2_000, deadline - Date.now()))),
         headers: { "content-type": "application/json", "x-goog-api-key": key } });
-    if (response.status === 429) geminiOut.set(model + key, Date.now() + 15 * 60_000);
+    // A used-up day is skipped for 15 min; a busy minute (many dishes at once) only for 1.
+    if (response.status === 429) {
+      geminiOut.set(model + key, Date.now() + ((await response.text()).includes("PerDay") ? 15 * 60_000 : 60_000));
+    }
     if (!response.ok) throw new Error(`${model} ${response.status}`);
     return JSON.parse((await response.json()).candidates[0].content.parts[0].text).exact;
   };
@@ -315,7 +332,9 @@ const GROQ_PHOTOS = 1;
 
 async function scan(request, env) {
   const photo = new Uint8Array(await request.arrayBuffer());
-  if (photo.length === 0 || photo.length > 15_000_000) return new Response("Bad photo", { status: 400 });
+  // The app always sends JPEG (it starts FF D8 FF); anything else would only waste a Gemini call.
+  const jpeg = photo[0] === 0xff && photo[1] === 0xd8 && photo[2] === 0xff;
+  if (!jpeg || photo.length > 15_000_000) return new Response("Bad photo", { status: 400 });
   const hints = new URL(request.url).searchParams.get("hints")?.slice(0, 1000);
 
   const prompt = hints ? `${SCAN_PROMPT} This user has corrected past scans: ${hints}.` : SCAN_PROMPT;
@@ -408,7 +427,7 @@ const RECIPE_RULES = "You are a home cook writing recipes for a cookbook. Pick t
   "\"grilled cheese sandwich\". No cooking words like easy, quick or homemade.";
 
 async function recipes(request, env, ctx) {
-  const { ingredients, maxMinutes, excluding } = await request.json();
+  const { ingredients, maxMinutes, excluding } = await request.json().catch(() => null) ?? {};
   if (!Array.isArray(ingredients) || ingredients.length === 0) return new Response("Missing ingredients", { status: 400 });
   const list = (items, n) => items.slice(0, n).map((item) => String(item).slice(0, 60)).join(", ");
   let rules = "";
