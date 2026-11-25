@@ -96,23 +96,23 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 **Notes for the reviewer.** This answers Apple's Guideline 2.1 "Information Needed" request point by point. Attach the screen recording in the Attachment box under App Review Information.
 
 > 1. SCREEN RECORDING
-> Attached. Recorded on a physical iPhone running the latest iOS. It starts at launch from the Home Screen and shows the full flow: sample pantry, scanning a photo, editing the ingredient list, finding recipes, a recipe's detail, cooking mode, and favorites. Pantry has no accounts, no login, no user-generated content shared with other users, and no paid content or in-app purchases.
+> The recording is attached. I recorded it on a physical iPhone running the latest iOS. It starts with launching Pantry from the Home Screen, then loads the sample pantry, scans a photo, edits the ingredient list, finds recipes, opens a recipe, uses cooking mode and saves a favorite. Pantry has no accounts, no login, no content shared between users, and no paid content or in-app purchases.
 >
 > 2. PURPOSE AND AUDIENCE
 > Pantry is for home cooks who open the fridge and don't know what to make. You take a photo of your fridge or pantry, AI lists the ingredients, and then AI writes three recipes that use only what you already have. It saves a trip to the store and cuts food waste. Each recipe has amounts, a photo of the dish, step-by-step instructions, and a cooking mode with one large step per screen.
 >
 > 3. HOW TO USE IT
-> No login, credentials or sample files are needed.
-> - Quick test: on the Pantry tab, tap "Try a sample pantry". Go to the Suggest tab and tap Find recipes. Recipes take about 3 seconds. Tap a recipe, then Start cooking. Tap the heart to save it to the Favorites tab.
-> - Scanning: on the Pantry tab, tap the camera button and take or choose a photo of food. The first scan asks permission to send the photo to an AI service. You can edit or delete any ingredient it finds.
-> - Siri: "Add to my pantry in Pantry" and "What can I cook with Pantry".
+> Pantry needs no login, credentials or sample files.
+> - To test quickly, tap "Try a sample pantry" on the Pantry tab. Go to the Suggest tab and tap Find recipes. Recipes take about 3 seconds. Tap a recipe, then Start cooking. Tap the heart to save it to the Favorites tab.
+> - To scan, tap the camera button on the Pantry tab and take or choose a photo of food. The first scan asks permission to send the photo to an AI service. You can edit or delete any ingredient it finds.
+> - Siri phrases are "Add to my pantry in Pantry" and "What can I cook with Pantry".
 >
 > 4. EXTERNAL SERVICES
-> - Cloudflare Workers: our own server, which forwards requests to the AI services. It doesn't store photos or IP addresses.
-> - Google Gemini API: reads ingredient photos and writes recipes.
-> - Groq API: backup AI service for the same two jobs when Gemini is unavailable.
-> - Pixabay API: licensed stock photos of each finished dish. Pixabay's license allows use in apps without attribution.
-> - Apple Intelligence (Foundation Models), on supported iPhones, writes recipes on-device when there's no connection. A built-in recipe book is the last fallback.
+> - Cloudflare Workers runs our own server, which passes requests to the AI services. It doesn't store photos or IP addresses.
+> - Google Gemini API reads ingredient photos and writes recipes.
+> - Groq API does the same two jobs when Gemini is unavailable.
+> - Pixabay API supplies a licensed stock photo of each finished dish. Pixabay's license allows use in apps without attribution.
+> - Apple Intelligence (Foundation Models) writes recipes on the iPhone when there's no connection, on iPhones that support it. A built-in recipe book is the last fallback.
 > Pantry uses no authentication, payment, analytics, advertising or tracking services.
 >
 > 5. REGIONAL DIFFERENCES
