@@ -95,6 +95,8 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 
 **Notes for the reviewer.** Answers Apple's Guideline 2.1 request. Attach the screen recording in the Attachment box under App Review Information.
 
+> Pantry scans a photo of your fridge with AI and lists the ingredients. You can edit that list or add items by hand. Then AI writes recipes that use only what you have, each with a dish photo, steps and a step-by-step cooking mode. You can save favorites and use Siri to add items or ask what to cook.
+>
 > 1. Recording: attached, from a physical iPhone on the latest iOS. Pantry has no accounts, user-generated content or purchases.
 >
 > 2. Purpose: take a photo of your fridge and AI writes recipes from what you already have. For home cooks who don't know what to make.
