@@ -93,40 +93,19 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 - Sign-in required: No.
 - Contact name, phone and email: you fill.
 
-**Notes for the reviewer.** This answers Apple's Guideline 2.1 "Information Needed" request point by point. Attach the screen recording in the Attachment box under App Review Information.
+**Notes for the reviewer.** Answers Apple's Guideline 2.1 request. Attach the screen recording in the Attachment box under App Review Information.
 
-> 1. SCREEN RECORDING
-> The recording is attached. I recorded it on a physical iPhone running the latest iOS. It starts with launching Pantry from the Home Screen, then loads the sample pantry, scans a photo, edits the ingredient list, finds recipes, opens a recipe, uses cooking mode and saves a favorite. Pantry has no accounts, no login, no content shared between users, and no paid content or in-app purchases.
+> 1. Recording: attached, from a physical iPhone on the latest iOS. Pantry has no accounts, user-generated content or purchases.
 >
-> 2. PURPOSE AND AUDIENCE
-> Pantry is for home cooks who open the fridge and don't know what to make. You take a photo of your fridge or pantry, AI lists the ingredients, and then AI writes three recipes that use only what you already have. It saves a trip to the store and cuts food waste. Each recipe has amounts, a photo of the dish, step-by-step instructions, and a cooking mode with one large step per screen.
+> 2. Purpose: take a photo of your fridge and AI writes recipes from what you already have. For home cooks who don't know what to make.
 >
-> 3. HOW TO USE IT
-> Pantry needs no login, credentials or sample files.
-> - To test quickly, tap "Try a sample pantry" on the Pantry tab. Go to the Suggest tab and tap Find recipes. Recipes take about 3 seconds. Tap a recipe, then Start cooking. Tap the heart to save it to the Favorites tab.
-> - To scan, tap the camera button on the Pantry tab and take or choose a photo of food. The first scan asks permission to send the photo to an AI service. You can edit or delete any ingredient it finds.
-> - Siri phrases are "Add to my pantry in Pantry" and "What can I cook with Pantry".
+> 3. Setup: no login needed. Tap "Try a sample pantry", then Suggest > Find recipes. To scan, tap the camera button on the Pantry tab.
 >
-> 4. EXTERNAL SERVICES
-> - Cloudflare Workers runs our own server, which passes requests to the AI services. It doesn't store photos or IP addresses.
-> - Google Gemini API reads ingredient photos and writes recipes.
-> - Groq API does the same two jobs when Gemini is unavailable.
-> - Pixabay API supplies a licensed stock photo of each finished dish. Pixabay's license allows use in apps without attribution.
-> - Apple Intelligence (Foundation Models) writes recipes on the iPhone when there's no connection, on iPhones that support it. A built-in recipe book is the last fallback.
-> Pantry uses no authentication, payment, analytics, advertising or tracking services.
+> 4. Services: Google Gemini and Groq (AI), Pixabay (dish photos), Cloudflare Workers (our server). Offline, it uses Apple Intelligence or a built-in recipe book.
 >
-> 5. REGIONAL DIFFERENCES
-> Pantry works the same in every region where it's offered. It is not offered in China mainland, because the AI services it uses aren't registered there.
+> 5. Regions: works the same everywhere it's offered. Not offered in China mainland.
 >
-> 6. REGULATED INDUSTRY OR THIRD-PARTY MATERIAL
-> Pantry isn't in a regulated industry. The only third-party material is the Pixabay stock photos, used under the Pixabay Content License. Recipes are general cooking instructions, not medical or nutrition advice.
->
-> 7. OTHER POINTS FROM YOUR MESSAGE
-> - Testing: we tested this build through TestFlight on a physical iPhone and iPad on the latest iOS and iPadOS. Pantry runs full screen on iPad with the same features.
-> - Internet: scanning needs a connection. Without one, Pantry still shows recipes from Apple Intelligence or its built-in recipe book, and shows a message instead of crashing.
-> - Screenshots: every screenshot shows the real app with the sample pantry loaded.
-> - Purchases: Pantry is free, with no in-app purchases, subscriptions or ads.
-> - Audience: Pantry is for the general public, not for a specific business or organization.
+> 6. Not a regulated industry. Pixabay photos are used under the Pixabay Content License.
 
 ## Export compliance
 
