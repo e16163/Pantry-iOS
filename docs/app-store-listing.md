@@ -120,6 +120,13 @@ Both count as collected because Pantry's server passes them to Google Gemini or 
 >
 > 6. REGULATED INDUSTRY OR THIRD-PARTY MATERIAL
 > Pantry isn't in a regulated industry. The only third-party material is the Pixabay stock photos, used under the Pixabay Content License. Recipes are general cooking instructions, not medical or nutrition advice.
+>
+> 7. OTHER POINTS FROM YOUR MESSAGE
+> - Testing: we tested this build through TestFlight on a physical iPhone and iPad on the latest iOS and iPadOS. Pantry runs full screen on iPad with the same features.
+> - Internet: scanning needs a connection. Without one, Pantry still shows recipes from Apple Intelligence or its built-in recipe book, and shows a message instead of crashing.
+> - Screenshots: every screenshot shows the real app with the sample pantry loaded.
+> - Purchases: Pantry is free, with no in-app purchases, subscriptions or ads.
+> - Audience: Pantry is for the general public, not for a specific business or organization.
 
 ## Export compliance
 
